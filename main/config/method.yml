@@ -1,0 +1,85 @@
+TASK:
+  NAME: "R_H2GP_S2GA_M2PQF_C2Mkl"
+  NOTES: "KaggleVersion_Notes"
+  TAGS: ["dev", "train"]  
+  MODE: "train"  # train / visualization
+  DEVICE: "cuda"  
+  SEED: 1
+
+MODEL:
+  MODULE: "Lucky"   # Lucky / Baseline
+  BACKBONE_TYPE: "resnet50_ibn_a" # resnet50 / resnet50_ibn_a
+  BACKBONE_FEATURES_DIM: 2048
+  VIEW_NUM: 4
+  PART_NUM: 2
+  MKL_WEIGHT: 0.7
+
+DATASET:
+  TRAIN_DATASET: "occluded_duke"
+  TRAIN_DATASET_PATH: "/kaggle/input/occluded-duke/Occluded_Duke"
+  PID_NUM: 702
+  TEST_DATASET: "occluded_duke"
+  TEST_DATASET_PATH: "/kaggle/input/occluded-duke/Occluded_Duke"
+
+
+DATALOADER:
+  IMAGE_SIZE: [256, 128]
+  USE_COLORJITOR: false
+  USE_REA: true
+  BATCHSIZE: 64
+  NUM_INSTANCES: 8
+
+SOLVER:
+  LEARNING_RATE: 0.0003
+  WEIGHT_DECAY: 0.0005
+  MILESTONES: [40, 70]
+  TOTAL_TRAIN_EPOCH: 120
+  EVAL_EPOCH: 5
+
+TEST:
+  RESUME_TEST_MODEL: 119  
+  TEST_MODE: "inter-camera"  # inter-camera, intra-camera, all
+
+SAVE:
+  OUTPUT_PATH: "results/outputs"
+  MAX_SAVE_MODEL_NUM: 1 # 最多保存的模型数量
+
+
+################################################################################################
+# 常用配置
+################################################################################################
+
+# DATASET:
+#   TRAIN_DATASET: "market"
+#   TRAIN_DATASET_PATH: "/kaggle/input/market1501/Market-1501-v15.09.15/"
+#   PID_NUM: 751
+#   TEST_DATASET: "market"
+#   TEST_DATASET_PATH: "/kaggle/input/market1501/Market-1501-v15.09.15/"
+
+# DATASET:
+#   TRAIN_DATASET: "duke"
+#   TRAIN_DATASET_PATH: "/kaggle/input/dukemtmc-reid/DukeMTMC-reID/"
+#   PID_NUM: 702
+#   TEST_DATASET: "duke"
+#   TEST_DATASET_PATH: "/kaggle/input/dukemtmc-reid/DukeMTMC-reID/"
+
+# DATASET:
+#   TRAIN_DATASET: "occluded_duke"
+#   TRAIN_DATASET_PATH: "/kaggle/input/occluded-duke/Occluded_Duke"
+#   PID_NUM: 702
+#   TEST_DATASET: "occluded_duke"
+#   TEST_DATASET_PATH: "/kaggle/input/occluded-duke/Occluded_Duke"
+
+# DATASET:
+#   TRAIN_DATASET: "partial_duke"
+#   TRAIN_DATASET_PATH: "/kaggle/input/p-dukemtmc-reid/P-DukeMTMC-reid/format/"
+#   PID_NUM: 665
+#   TEST_DATASET: "partial_duke"
+#   TEST_DATASET_PATH: "/kaggle/input/p-dukemtmc-reid/P-DukeMTMC-reid/format/"
+
+# DATASET:
+#   TRAIN_DATASET: "occluded_reid"
+#   TRAIN_DATASET_PATH: "/kaggle/input/occluded-reid/occluded_reid/format_dataset/0"
+#   PID_NUM: 100
+#   TEST_DATASET: "occluded_reid"
+#   TEST_DATASET_PATH: "/kaggle/input/occluded-reid/occluded_reid/format_dataset/0"
