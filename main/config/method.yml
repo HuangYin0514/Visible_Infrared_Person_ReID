@@ -15,7 +15,6 @@ MODEL:
 DATASET:
   TRAIN_DATASET: "sysu_mm01"
   TRAIN_DATASET_PATH: "/kaggle/input/occluded-duke/Occluded_Duke"
-  PID_NUM: 702
   MODE: "all"
 
 
@@ -25,15 +24,16 @@ DATALOADER:
   NUM_INSTANCES: 8
   TEST_BATCH: 64
 
+OPTIMIZER:
+  TOTAL_TRAIN_EPOCH: 81
+  LEARNING_RATE: 0.1
 
-SOLVER:
-  LEARNING_RATE: 0.0003
-  WEIGHT_DECAY: 0.0005
-  MILESTONES: [40, 70]
-  TOTAL_TRAIN_EPOCH: 120
-  EVAL_EPOCH: 5
+SCHEDULER:
+  MILESTONES: [10, 20, 50]   
+  FACTORS: [1.0, 0.1, 0.01]  
 
 TEST:
+  EVAL_EPOCH: 2
   RESUME_TEST_MODEL: 119  
   TEST_MODE: "inter-camera"  # inter-camera, intra-camera, all
 

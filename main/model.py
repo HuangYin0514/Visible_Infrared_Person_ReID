@@ -1,0 +1,127 @@
+import copy
+
+import torch
+import torch.nn as nn
+from gem_pool import GeneralizedMeanPoolingP
+from resnet import resnet50
+from resnet_ibn_a import resnet50_ibn_a
+
+
+class ReIDNet(nn.Module):
+
+    def __init__(self, config, n_class):
+        super(ReIDNet, self).__init__()
+        self.config = config
+
+        BACKBONE_FEATURES_DIM = config.MODEL.BACKBONE_FEATURES_DIM
+        BACKBONE_TYPE = config.MODEL.BACKBONE_TYPE
+
+        # ------------- Backbone -----------------------
+        self.backbone = Backbone(BACKBONE_TYPE)
+
+        self.backbone_pooling = GeneralizedMeanPoolingP()
+        self.backbone_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
+
+    def forward(self, x):
+        resnet_feature_map = self.backbone(x)
+
+        if self.training:
+            return resnet_feature_map
+        else:
+            eval_features = []
+
+            # Backbone
+            backbone_features = self.backbone_pooling(resnet_feature_map).squeeze()
+            backbone_bn_features, backbone_cls_score = self.backbone_classifier(backbone_features)
+            eval_features.append(backbone_bn_features)
+
+            eval_features = torch.cat(eval_features, dim=1)
+            return eval_features
+
+
+class Classifier(nn.Module):
+    """
+    BN -> Classifier
+    """
+
+    def __init__(self, c_dim, pid_num):
+        super(Classifier, self).__init__()
+        self.pid_num = pid_num
+
+        self.bottleneck = nn.BatchNorm1d(c_dim)
+        self.bottleneck.bias.requires_grad_(False)  # no shift
+        self.bottleneck.apply(weights_init_kaiming)
+
+        self.classifier = nn.Linear(c_dim, self.pid_num, bias=False)
+        self.classifier.apply(weights_init_classifier)
+
+    def forward(self, features):
+        bn_features = self.bottleneck(features.squeeze())
+        cls_score = self.classifier(bn_features)
+        return bn_features, cls_score
+
+
+class Backbone(nn.Module):
+    def __init__(self, BACKBONE_TYPE):
+        super(Backbone, self).__init__()
+        # resnet = torchvision.models.resnet50(pretrained=True)
+        resnet = None
+        if BACKBONE_TYPE == "resnet50":
+            resnet = resnet50(pretrained=True)
+        elif BACKBONE_TYPE == "resnet50_ibn_a":
+            resnet = resnet50_ibn_a(pretrained=True)
+
+        # Modifiy backbone
+        resnet.layer4[0].downsample[0].stride = (1, 1)
+        resnet.layer4[0].conv2.stride = (1, 1)
+
+        # Backbone structure
+        self.resnet_preprocessing_layer = nn.Sequential(
+            resnet.conv1,
+            resnet.bn1,
+            resnet.relu,
+            resnet.maxpool,
+        )
+        self.resnet_layer1 = resnet.layer1
+        self.resnet_layer2 = resnet.layer2
+        self.resnet_layer3 = resnet.layer3
+        self.resnet_layer4 = resnet.layer4
+
+    def forward(self, x):
+
+        preprocessing_out = self.resnet_preprocessing_layer(x)
+
+        l1_out = self.resnet_layer1(preprocessing_out)
+        l2_out = self.resnet_layer2(l1_out)
+        l3_out = self.resnet_layer3(l2_out)
+        l4_out = self.resnet_layer4(l3_out)
+
+        return l4_out
+
+
+def weights_init_classifier(m):
+    classname = m.__class__.__name__
+    if classname.find("Linear") != -1:
+        nn.init.normal_(m.weight, std=0.001)
+        if m.bias:
+            nn.init.constant_(m.bias, 0.0)
+
+
+def weights_init_kaiming(m):
+    classname = m.__class__.__name__
+    if classname.find("Linear") != -1:
+        nn.init.kaiming_normal_(m.weight, a=0, mode="fan_out")
+        if m.bias is not None:
+            nn.init.constant_(m.bias, 0)
+    elif classname.find("Conv") != -1:
+        nn.init.kaiming_normal_(m.weight, a=0, mode="fan_in")
+        if m.bias is not None:
+            nn.init.constant_(m.bias, 0.0)
+    elif classname.find("BatchNorm") != -1:
+        if m.affine:
+            nn.init.constant_(m.weight, 1.0)
+            nn.init.constant_(m.bias, 0.0)
+    elif classname.find("InstanceNorm") != -1:
+        if m.affine:
+            nn.init.constant_(m.weight, 1.0)
+            nn.init.constant_(m.bias, 0.0)

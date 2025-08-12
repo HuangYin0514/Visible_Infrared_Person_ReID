@@ -14,8 +14,10 @@ IR_CAMERAS = ["cam3", "cam6"]
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_path", type=str, default="/Users/drhy/Documents/projects/Visible_Infrared_Person_ReID/_dataset_processing/SYSU_MM01_concise")
-    parser.add_argument("--output_path", type=str, default="/Users/drhy/Documents/projects/Visible_Infrared_Person_ReID/_dataset_processing/SYSU_MM01_concise")
+    parser.add_argument("--data_path", type=str, default="/Users/drhy/Documents/projects/Visible_Infrared_Person_ReID/_dataset_processing/SYSU_MM01")
+    parser.add_argument("--output_path", type=str, default="/Users/drhy/Documents/projects/Visible_Infrared_Person_ReID/_dataset_processing/SYSU_MM01")
+    # parser.add_argument("--data_path", type=str, default="/Users/drhy/Documents/projects/Visible_Infrared_Person_ReID/_dataset_processing/SYSU_MM01_concise")
+    # parser.add_argument("--output_path", type=str, default="/Users/drhy/Documents/projects/Visible_Infrared_Person_ReID/_dataset_processing/SYSU_MM01_concise")
     args = parser.parse_args()
     return args
 
@@ -45,11 +47,13 @@ def collect_image_paths(data_path, ids):
         for cam in RGB_CAMERAS:
             img_dir = os.path.join(data_path, cam, pid)
             if os.path.isdir(img_dir):
-                files_rgb.extend(sorted([os.path.join(img_dir, fname) for fname in os.listdir(img_dir)]))
+                files_rgb.extend(sorted([os.path.join(img_dir, fname) for fname in os.listdir(img_dir) if ".DS_Store" not in fname]))  # 跳过.DS_Store文件
+
         for cam in IR_CAMERAS:
             img_dir = os.path.join(data_path, cam, pid)
             if os.path.isdir(img_dir):
-                files_ir.extend(sorted([os.path.join(img_dir, fname) for fname in os.listdir(img_dir)]))
+                files_ir.extend(sorted([os.path.join(img_dir, fname) for fname in os.listdir(img_dir) if ".DS_Store" not in fname]))
+
     return files_rgb, files_ir
 
 
@@ -63,6 +67,7 @@ def read_and_resize_images(image_paths, pid2label):
     """读取并缩放图像，返回像素数组和标签"""
     imgs, labels = [], []
     for path in image_paths:
+
         img = Image.open(path).resize((FIX_IMAGE_WIDTH, FIX_IMAGE_HEIGHT), Image.LANCZOS)
         imgs.append(np.array(img))
 
@@ -77,7 +82,10 @@ def process_dataset(data_path, output_path):
     ids = load_ids(data_path)
     files_rgb, files_ir = collect_image_paths(data_path, ids)
     pid2label = build_pid2label(files_ir)
-
+    # for fr in files_rgb:
+    #     print(fr)
+    # for fr in files_ir:
+    #     print(fr)
     util.make_dirs(output_path)
 
     # RGB

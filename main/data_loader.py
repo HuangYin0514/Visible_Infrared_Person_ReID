@@ -46,7 +46,7 @@ class Data_Loder:
             # training set
             trainset = Dataset4Sysu_mm01(data_dir=config.DATASET.TRAIN_DATASET_PATH, transform=transform_train)
             # generate the idx of each person identity
-            color_pos, thermal_pos = GenIdx(trainset.train_color_label, trainset.train_thermal_label)
+            color_pos, thermal_pos = GenIdx(trainset.color_label, trainset.thermal_label)
 
             # testing set
             query_img, query_label, query_cam = process_query_sysu(config.DATASET.TRAIN_DATASET_PATH, mode=config.DATASET.MODE)
@@ -58,15 +58,9 @@ class Data_Loder:
         query_loader = data.DataLoader(queryset, batch_size=config.DATALOADER.TEST_BATCH, shuffle=False, num_workers=4)
         gallery_loader = data.DataLoader(gallset, batch_size=config.DATALOADER.TEST_BATCH, shuffle=False, num_workers=4)
 
-        self.trainset = trainset
-        self.color_pos = color_pos
-        self.thermal_pos = thermal_pos
-        self.query_loader = query_loader
-        self.gallery_loader = gallery_loader
-
         ###################################################################################################
         # Print dataset statistics
-        N_class = len(np.unique(trainset.train_color_label))
+        N_class = len(np.unique(trainset.color_label))
         N_query = len(query_label)
         N_gallery = len(gallery_label)
 
@@ -74,37 +68,53 @@ class Data_Loder:
         print("  ------------------------------")
         print("  subset   | # ids | # images")
         print("  ------------------------------")
-        print("  visible  | {:5d} | {:8d}".format(N_class, len(trainset.train_color_label)))
-        print("  thermal  | {:5d} | {:8d}".format(N_class, len(trainset.train_thermal_label)))
+        print("  visible  | {:5d} | {:8d}".format(N_class, len(trainset.color_label)))
+        print("  thermal  | {:5d} | {:8d}".format(N_class, len(trainset.thermal_label)))
         print("  ------------------------------")
         print("  query    | {:5d} | {:8d}".format(len(np.unique(query_label)), N_query))
         print("  gallery  | {:5d} | {:8d}".format(len(np.unique(gallery_label)), N_gallery))
         print("  ------------------------------")
         print("Data Loading Time:\t {:.3f}".format(time.time() - end))
+
         ###################################################################################################
+        # Set values
+        self.trainset = trainset
+        self.color_pos = color_pos
+        self.thermal_pos = thermal_pos
+
+        self.query_loader = query_loader
+        self.query_label = query_label
+        self.query_cam = query_cam
+        self.gallery_loader = gallery_loader
+        self.gallery_label = gallery_label
+        self.gallery_cam = gallery_cam
+
+        self.N_class = N_class
+        self.N_query = N_query
+        self.N_gallery = N_gallery
 
 
 class Dataset4Sysu_mm01(data.Dataset):
     def __init__(self, data_dir, transform=None, colorIndex=None, thermalIndex=None):
 
         # Load training images (path) and labels
-        train_color_image = np.load(data_dir + "train_rgb_resized_img.npy")
-        self.train_color_label = np.load(data_dir + "train_rgb_resized_label.npy")
+        color_image = np.load(data_dir + "train_rgb_resized_img.npy")
+        self.color_label = np.load(data_dir + "train_rgb_resized_label.npy")
 
-        train_thermal_image = np.load(data_dir + "train_ir_resized_img.npy")
-        self.train_thermal_label = np.load(data_dir + "train_ir_resized_label.npy")
+        thermal_image = np.load(data_dir + "train_ir_resized_img.npy")
+        self.thermal_label = np.load(data_dir + "train_ir_resized_label.npy")
 
         # BGR to RGB
-        self.train_color_image = train_color_image
-        self.train_thermal_image = train_thermal_image
+        self.color_image = color_image
+        self.thermal_image = thermal_image
         self.transform = transform
         self.cIndex = colorIndex
         self.tIndex = thermalIndex
 
     def __getitem__(self, index):
 
-        img1, target1 = self.train_color_image[self.cIndex[index]], self.train_color_label[self.cIndex[index]]
-        img2, target2 = self.train_thermal_image[self.tIndex[index]], self.train_thermal_label[self.tIndex[index]]
+        img1, target1 = self.color_image[self.cIndex[index]], self.color_label[self.cIndex[index]]
+        img2, target2 = self.thermal_image[self.tIndex[index]], self.thermal_label[self.tIndex[index]]
 
         img1 = self.transform(img1)
         img2 = self.transform(img2)
@@ -121,7 +131,7 @@ class TestDataset(data.Dataset):
         test_image = []
         for i in range(len(test_img_file)):
             img = Image.open(test_img_file[i])
-            img = img.resize((img_size[0], img_size[1]), Image.ANTIALIAS)
+            img = img.resize((img_size[1], img_size[0]), Image.ANTIALIAS)
             pix_array = np.array(img)
             test_image.append(pix_array)
         test_image = np.array(test_image)
