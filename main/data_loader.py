@@ -126,7 +126,7 @@ class Dataset4Sysu_mm01(data.Dataset):
 
 
 class TestDataset(data.Dataset):
-    def __init__(self, test_img_file, test_label, transform=None, img_size=(192, 384)):
+    def __init__(self, test_img_file, test_label, transform=None, img_size=(144, 288)):
 
         test_image = []
         for i in range(len(test_img_file)):
