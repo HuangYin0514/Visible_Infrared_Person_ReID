@@ -159,7 +159,7 @@ def run(config):
                     data_loder.query_cam,
                     data_loder.gallery_cam,
                 )
-                logger("Time: {}; Test on Dataset: {}, \nmAP: {} \nRank: {}".format(util.time_now(), config.DATASET.TEST_DATASET, mAP, cmc))
+                logger("Time: {}; Test on Dataset: {}, \nmAP: {} \nRank: {}".format(util.time_now(), config.DATASET.TRAIN_DATASET, mAP, cmc))
 
 
 if __name__ == "__main__":
