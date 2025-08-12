@@ -14,7 +14,7 @@ MODEL:
 
 DATASET:
   TRAIN_DATASET: "sysu_mm01"
-  TRAIN_DATASET_PATH: "/kaggle/input/sysu-mm01/SYSU_MM01"
+  TRAIN_DATASET_PATH: "/kaggle/input/sysu-mm01/SYSU_MM01/"
   MODE: "all"
 
 
