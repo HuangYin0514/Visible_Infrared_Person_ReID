@@ -14,7 +14,7 @@ MODEL:
 
 DATASET:
   TRAIN_DATASET: "sysu_mm01"
-  TRAIN_DATASET_PATH: "/kaggle/input/occluded-duke/Occluded_Duke"
+  TRAIN_DATASET_PATH: "/kaggle/input/sysu-mm01"
   MODE: "all"
 
 
