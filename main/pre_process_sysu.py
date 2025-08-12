@@ -6,8 +6,8 @@ import util
 from PIL import Image
 
 # 固定参数
-FIX_IMAGE_WIDTH = 192
-FIX_IMAGE_HEIGHT = 384
+FIX_IMAGE_WIDTH = 144
+FIX_IMAGE_HEIGHT = 288
 RGB_CAMERAS = ["cam1", "cam2", "cam4", "cam5"]
 IR_CAMERAS = ["cam3", "cam6"]
 
