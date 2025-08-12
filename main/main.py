@@ -14,6 +14,7 @@ from logger import Logger
 from model import ReIDNet
 from optimizer import Optimizer
 from scheduler import Scheduler
+from tqdm import tqdm
 
 import wandb
 
@@ -98,7 +99,8 @@ def run(config):
         #########
         current_lr = scheduler.adjust_learning_rate(config, optimizer, epoch)
         meter = util.MultiItemAverageMeter()
-        for batch_idx, (input1, input2, label1, label2) in enumerate(trainloader):
+        for batch_idx, (input1, input2, label1, label2) in enumerate(tqdm(trainloader)):
+
             net.train()
             if config.MODEL.MODULE == "Lucky":
                 total_loss = 0
@@ -126,7 +128,7 @@ def run(config):
         #########
         # Test
         #########
-        if epoch % config.SOLVER.EVAL_EPOCH == 0:
+        if epoch % config.TEST.EVAL_EPOCH == 0:
             net.eval()
 
             query_feat = np.zeros((data_loder.N_query, 2048))
