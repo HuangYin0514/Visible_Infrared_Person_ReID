@@ -22,13 +22,18 @@ def get_args():
 
 
 def run(config):
+    ######################################################################
     # Logger
     util.make_dirs(os.path.join(config.SAVE.OUTPUT_PATH, "logs/"))
     logger = Logger(file_path=os.path.join(config.SAVE.OUTPUT_PATH, "logs/", "logger.log"))
     logger(config)
 
+    ######################################################################
     # Data
-    data_loder = Data_Loder().load_data(config)
+    data_loder = Data_Loder(config)
+
+    ######################################################################
+    # Model
 
     pass
 

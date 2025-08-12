@@ -9,8 +9,9 @@ from random_erasing import RandomErasing
 
 
 class Data_Loder:
-    def __init__(self):
+    def __init__(self, config):
         self.name = "Data_Loder"
+        self.load_data(config)
 
     def load_data(self, config):
         print("==> Loading data..")
