@@ -140,6 +140,7 @@ def run(config):
                     ptr = 0
                     for input, label in loader:
                         batch_num = input.size(0)
+                        input = input.to(DEVICE)
 
                         bn_features = net(input)
                         flip_images = torch.flip(input, [3])
