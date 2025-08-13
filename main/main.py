@@ -10,7 +10,6 @@ from criterion import Criterion
 from data_loader import Data_Loder
 from eval_metrics import eval_sysu
 from identity_sampler import IdentitySampler
-from logger import Logger
 from model import ReIDNet
 from optimizer import Optimizer
 from scheduler import Scheduler
@@ -32,8 +31,7 @@ def get_args():
 def run(config):
     ######################################################################
     # Logger
-    util.make_dirs(os.path.join(config.SAVE.OUTPUT_PATH, "logs/"))
-    logger = Logger(file_path=os.path.join(config.SAVE.OUTPUT_PATH, "logs/", "logger.log"))
+    logger = util.Logger(path_dir=os.path.join(config.SAVE.OUTPUT_PATH, "logs/"), name="logger.log")
     logger(config)
 
     ######################################################################
@@ -63,6 +61,8 @@ def run(config):
     ######################################################################
     # Scheduler
     print("==> Start Training...")
+    # 初始化最佳指标
+    best_epoch, best_mAP, best_rank1 = 0, 0, 0
     for epoch in range(0, config.OPTIMIZER.TOTAL_TRAIN_EPOCH):
         #########
         # data
@@ -156,6 +156,8 @@ def run(config):
 
             # compute the similarity
             distmat = np.matmul(query_feat, np.transpose(gall_feat))
+
+            cmc, mAP = None, None
             if config.DATASET.TRAIN_DATASET == "sysu_mm01":
                 cmc, mAP, mINP = eval_sysu(
                     -distmat,
@@ -164,7 +166,25 @@ def run(config):
                     data_loder.query_cam,
                     data_loder.gallery_cam,
                 )
-                logger("Time: {}; Test on Dataset: {}, \nmAP: {} \nRank: {}".format(util.time_now(), config.DATASET.TRAIN_DATASET, mAP, cmc))
+
+            is_best_rank_flag = cmc[0] >= best_rank1
+            if is_best_rank_flag:
+                best_epoch = epoch
+                best_rank1 = cmc[0]
+                best_mAP = mAP
+                wandb.log({"best_epoch": best_epoch, "best_rank1": best_rank1, "best_mAP": best_mAP})
+                util.save_model(
+                    model=net,
+                    epoch=epoch,
+                    path_dir=os.path.join(config.SAVE.OUTPUT_PATH, "models/"),
+                )
+
+            logger("Time: {}; Test on Dataset: {}, \nmAP: {} \nRank: {}".format(util.time_now(), config.DATASET.TRAIN_DATASET, mAP, cmc))
+            wandb.log({"test_epoch": epoch, "mAP": mAP, "Rank1": cmc[0]})
+
+    logger("=" * 50)
+    logger("Best model is: epoch: {}, rank1: {}, mAP: {}".format(best_epoch, best_rank1, best_mAP))
+    logger("=" * 50)
 
 
 if __name__ == "__main__":
@@ -175,7 +195,7 @@ if __name__ == "__main__":
     # 初始化wandb
     wandb.init(
         entity="yinhuang-team-projects",
-        project="VI_ReID",
+        project=config.TASK.PROJECT,
         name=config.TASK.NAME,
         notes=config.TASK.NOTES,
         tags=config.TASK.TAGS,

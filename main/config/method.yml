@@ -1,6 +1,7 @@
 TASK:
-  NAME: "Baseline"
+  NAME: "Method_Name"
   NOTES: "KaggleVersion_Notes"
+  PROJECT: "VI_ReID"
   TAGS: ["dev", "train"]  
   MODE: "train"  # train / visualization
   DEVICE: "cuda"  
@@ -35,9 +36,8 @@ SCHEDULER:
 TEST:
   EVAL_EPOCH: 2
   RESUME_TEST_MODEL: 119  
-  TEST_MODE: "inter-camera"  # inter-camera, intra-camera, all
+  TEST_MODE: "inter-camera" 
 
 SAVE:
   OUTPUT_PATH: "results/outputs"
-  MAX_SAVE_MODEL_NUM: 1 # 最多保存的模型数量
 
