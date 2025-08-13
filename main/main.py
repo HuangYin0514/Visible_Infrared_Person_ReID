@@ -152,6 +152,8 @@ def run(config):
                         elif loader_id == 1:
                             gall_feat[ptr : ptr + batch_num, :] = bn_features.detach().cpu().numpy()
 
+                        ptr = ptr + batch_num
+
             # compute the similarity
             distmat = np.matmul(query_feat, np.transpose(gall_feat))
             if config.DATASET.TRAIN_DATASET == "sysu_mm01":
@@ -173,7 +175,7 @@ if __name__ == "__main__":
     # 初始化wandb
     wandb.init(
         entity="yinhuang-team-projects",
-        project="VI_",
+        project="VI_ReID",
         name=config.TASK.NAME,
         notes=config.TASK.NOTES,
         tags=config.TASK.TAGS,
