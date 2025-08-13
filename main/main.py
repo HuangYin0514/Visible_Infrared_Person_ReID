@@ -67,7 +67,7 @@ def run(config):
         #########
         # data
         #########
-        print("==> Preparing Data Loader...")
+        # print("==> Preparing Data Loader...")
         # identity sampler
         sampler = IdentitySampler(
             data_loder.trainset.color_label,
@@ -99,17 +99,21 @@ def run(config):
         #########
         current_lr = scheduler.adjust_learning_rate(config, optimizer, epoch)
         meter = util.MultiItemAverageMeter()
-        for batch_idx, (input1, input2, label1, label2) in enumerate(tqdm(trainloader)):
+        for batch_idx, (vis_imgs, inf_imgs, vis_labels, inf_labels) in enumerate(tqdm(trainloader)):
 
             net.train()
             if config.MODEL.MODULE == "Lucky":
                 total_loss = 0
 
-                labels = torch.cat([label1, label2], 0).to(DEVICE)
-                input1, input2 = input1.to(DEVICE), input2.to(DEVICE)
-                input = torch.cat([input1, input2], 0)
+                labels = torch.cat([vis_labels, inf_labels], 0).to(DEVICE)
+                vis_imgs, inf_imgs = vis_imgs.to(DEVICE), inf_imgs.to(DEVICE)
+                # input = torch.cat([input1, input2], 0)
 
-                backbone_feature_map = net(input)
+                backbone_feature_map = net(vis_imgs, inf_imgs, modal="all")
+
+                # N_v = vis_labels.shape[0]
+                # N_i = inf_labels.shape[0]
+                # resnet_feature_map_vis, resnet_feature_map_inf = torch.split(backbone_feature_map, [N_v, N_i], dim=0)
 
                 # Backbone
                 backbone_feature = net.backbone_pooling(backbone_feature_map).squeeze()
@@ -137,14 +141,17 @@ def run(config):
             print(util.time_now(), "Start extracting features...")
             with torch.no_grad():
                 for loader_id, loader in enumerate(loaders):
+                    if config.DATASET.TRAIN_DATASET == "sysu_mm01":
+                        modal_map = {0: "inf", 1: "vis"}
+                        modal = modal_map.get(loader_id)
                     ptr = 0
-                    for input, label in loader:
-                        batch_num = input.size(0)
-                        input = input.to(DEVICE)
+                    for imgs, labels in loader:
+                        batch_num = imgs.size(0)
+                        imgs = imgs.to(DEVICE)
 
-                        bn_features = net(input)
-                        flip_images = torch.flip(input, [3])
-                        flip_bn_features = net(flip_images)
+                        bn_features = net(imgs, imgs, modal)
+                        flip_imgs = torch.flip(imgs, [3])
+                        flip_bn_features = net(flip_imgs, flip_imgs, modal)
                         bn_features = bn_features + flip_bn_features
 
                         if loader_id == 0:

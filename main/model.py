@@ -22,8 +22,8 @@ class ReIDNet(nn.Module):
         self.backbone_pooling = GeneralizedMeanPoolingP()
         self.backbone_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
 
-    def forward(self, x):
-        resnet_feature_map = self.backbone(x)
+    def forward(self, x_vis, x_inf, modal):
+        resnet_feature_map = self.backbone(x_vis, x_inf, modal)
 
         if self.training:
             return resnet_feature_map
@@ -76,25 +76,34 @@ class Backbone(nn.Module):
         resnet.layer4[0].conv2.stride = (1, 1)
 
         # Backbone structure
-        self.resnet_preprocessing_layer = nn.Sequential(
+        self.vis_pre_layer = nn.Sequential(
             resnet.conv1,
             resnet.bn1,
             resnet.relu,
             resnet.maxpool,
         )
-        self.resnet_layer1 = resnet.layer1
-        self.resnet_layer2 = resnet.layer2
-        self.resnet_layer3 = resnet.layer3
-        self.resnet_layer4 = resnet.layer4
+        self.inf_pre_layer = copy.deepcopy(self.vis_pre_layer)
 
-    def forward(self, x):
+        self.shared_layer = nn.Sequential(
+            resnet.layer1,
+            resnet.layer2,
+            resnet.layer3,
+            resnet.layer4,
+        )
 
-        preprocessing_out = self.resnet_preprocessing_layer(x)
+    def forward(self, x_vis, x_inf, modal):
+        if modal == "all":
+            x_vis = self.vis_pre_layer(x_vis)
+            x_inf = self.inf_pre_layer(x_inf)
+            x = torch.cat([x_vis, x_inf], dim=0)
+        elif modal == "vis":
+            x_vis = self.vis_pre_layer(x_vis)
+            x = x_vis
+        elif modal == "inf":
+            x_inf = self.inf_pre_layer(x_inf)
+            x = x_inf
 
-        l1_out = self.resnet_layer1(preprocessing_out)
-        l2_out = self.resnet_layer2(l1_out)
-        l3_out = self.resnet_layer3(l2_out)
-        l4_out = self.resnet_layer4(l3_out)
+        l4_out = self.shared_layer(x)
 
         return l4_out
 
