@@ -151,9 +151,9 @@ def run(config):
                         imgs = imgs.to(DEVICE)
 
                         bn_features = net(imgs, imgs, modal)
-                        # flip_imgs = torch.flip(imgs, [3])
-                        # flip_bn_features = net(flip_imgs, flip_imgs, modal)
-                        # bn_features = bn_features + flip_bn_features
+                        flip_imgs = torch.flip(imgs, [3])
+                        flip_bn_features = net(flip_imgs, flip_imgs, modal)
+                        bn_features = bn_features + flip_bn_features
 
                         if loader_id == 0:
                             query_feat[ptr : ptr + batch_num, :] = bn_features.detach().cpu().numpy()
