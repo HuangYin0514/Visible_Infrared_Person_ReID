@@ -118,14 +118,15 @@ def run(config):
                 # Backbone
                 backbone_feature = net.backbone_pooling(backbone_feature_map).squeeze()
                 backbone_bn_features, backbone_cls_score = net.backbone_classifier(backbone_feature)
-                global_pid_loss = criterion.id(backbone_cls_score, labels)
-                total_loss += global_pid_loss
+                backbone_pid_loss = criterion.id(backbone_cls_score, labels)
+                backbone_tri_loss = criterion.tri(backbone_feature, labels)[0]
+                total_loss += backbone_pid_loss + backbone_tri_loss
 
                 optimizer.zero_grad()
                 total_loss.backward()
                 optimizer.step()
 
-                meter.update({"global_pid_loss": global_pid_loss.item()})
+                meter.update({"backbone_pid_loss": backbone_pid_loss.item()})
         logger("Time: {}; Epoch: {}; {}".format(util.time_now(), epoch, meter.get_str()))
         wandb.log({"Lr": optimizer.param_groups[0]["lr"], **meter.get_dict()})
 
@@ -150,9 +151,9 @@ def run(config):
                         imgs = imgs.to(DEVICE)
 
                         bn_features = net(imgs, imgs, modal)
-                        flip_imgs = torch.flip(imgs, [3])
-                        flip_bn_features = net(flip_imgs, flip_imgs, modal)
-                        bn_features = bn_features + flip_bn_features
+                        # flip_imgs = torch.flip(imgs, [3])
+                        # flip_bn_features = net(flip_imgs, flip_imgs, modal)
+                        # bn_features = bn_features + flip_bn_features
 
                         if loader_id == 0:
                             query_feat[ptr : ptr + batch_num, :] = bn_features.detach().cpu().numpy()
@@ -180,11 +181,12 @@ def run(config):
                 best_rank1 = cmc[0]
                 best_mAP = mAP
                 wandb.log({"best_epoch": best_epoch, "best_rank1": best_rank1, "best_mAP": best_mAP})
-                util.save_model(
-                    model=net,
-                    epoch=epoch,
-                    path_dir=os.path.join(config.SAVE.OUTPUT_PATH, "models/"),
-                )
+                # if epoch>50:
+                #     util.save_model(
+                #         model=net,
+                #         epoch=epoch,
+                #         path_dir=os.path.join(config.SAVE.OUTPUT_PATH, "models/"),
+                #     )
 
             logger("Time: {}; Test on Dataset: {}, \nmAP: {} \nRank: {}".format(util.time_now(), config.DATASET.TRAIN_DATASET, mAP, cmc))
             wandb.log({"test_epoch": epoch, "mAP": mAP, "Rank1": cmc[0]})
