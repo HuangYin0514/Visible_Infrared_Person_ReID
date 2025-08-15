@@ -11,6 +11,5 @@ wandb login c74133df8c2cf575304acf8a99fe03ab74b6fe6a
 
 # python main.py --config_file "config/method.yml" TASK.NAME=Baseline TASK.NOTES=V007  MODEL.MODULE=Lucky
 
-
-python main.py --config_file "config/method.yml" TASK.NAME=Baseline TASK.NOTES=V009  MODEL.MODULE=Lucky MODEL.BACKBONE_TYPE=resnet50_ibn_a
+python main.py --config_file "config/method.yml" TASK.NAME=Baseline TASK.NOTES=V010  MODEL.MODULE=Lucky MODEL.BACKBONE_TYPE=resnet50
 

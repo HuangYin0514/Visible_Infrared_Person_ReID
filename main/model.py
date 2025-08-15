@@ -81,11 +81,11 @@ class Backbone(nn.Module):
             resnet.bn1,
             resnet.relu,
             resnet.maxpool,
+            resnet.layer1,
         )
         self.inf_pre_layer = copy.deepcopy(self.vis_pre_layer)
 
         self.shared_layer = nn.Sequential(
-            resnet.layer1,
             resnet.layer2,
             resnet.layer3,
             resnet.layer4,
