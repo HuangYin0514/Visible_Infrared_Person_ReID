@@ -21,18 +21,18 @@ pend1 = chrono.ChBody()
 pend1.SetMass(0.79)
 pend1.SetInertiaXX(chrono.ChVector3d(0.01, 0.01, 0.0658))
 
-# 设置初始位置：顶端在原点，悬挂 0.5 m
+# 设置初始位置：长度 0.5 m，初始偏角 0.2 rad
 pend_length = 0.5
-initial_angle = 0.2  # 弧度，初始偏离垂直方向
+initial_angle = 0.2  # 弧度
 pend1.SetPos(chrono.ChVector3d(pend_length * np.sin(initial_angle), -pend_length * np.cos(initial_angle), 0))
 sys.Add(pend1)
 
 # ------------------------------------------------------------------------------
 # 4. Revolute joint at pendulum top (origin)
 # ------------------------------------------------------------------------------
-joint_frame = chrono.ChFrameD(chrono.ChVector3d(0, 0, 0))  # pivot at origin
 joint1 = chrono.ChLinkRevolute()
-joint1.Initialize(ground, pend1, joint_frame)
+# Initialize: ground, pendulum, pivot位置（原点），旋转轴(0,0,1)
+joint1.Initialize(ground, pend1, chrono.ChVectorD(0, 0, 0), chrono.ChVectorD(0, 0, 1))
 sys.Add(joint1)
 
 # ------------------------------------------------------------------------------
