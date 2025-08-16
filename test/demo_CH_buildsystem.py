@@ -10,7 +10,8 @@ import pychrono as chrono
 
 # 1. 创建物理系统，并启用重力
 my_system = chrono.ChSystemNSC()
-my_system.SetGravitationalAcceleration(chrono.ChVector3d(0, -9.81, 0))  # ✅ 重力向下
+my_system.SetGravitationalAcceleration(chrono.ChVector3d(0, -9.81, 0))
+my_system.GetCollisionSystem().SetType(chrono.ChCollisionSystem.Type_BULLET)  # ✅ 启用 Bullet 碰撞
 
 # 2. 创建接触材质
 material = chrono.ChContactMaterialNSC()
@@ -21,10 +22,8 @@ material.SetCompliance(0)
 bodyA = chrono.ChBody()
 bodyA.SetName("BodyA")
 bodyA.SetMass(20)
-bodyA.SetInertiaXX(chrono.ChVector3d(10, 10, 10))
 bodyA.SetPos(chrono.ChVector3d(0, -1, 0))  # 厚度1，顶面在 y=0
 bodyA.AddCollisionShape(chrono.ChCollisionShapeBox(material, 10, 1, 10))
-bodyA.GetCollisionModel().BuildModel()  # ✅ 必须构建碰撞模型
 bodyA.SetFixed(True)
 bodyA.EnableCollision(True)
 
@@ -32,10 +31,8 @@ bodyA.EnableCollision(True)
 bodyB = chrono.ChBody()
 bodyB.SetName("BodyB")
 bodyB.SetMass(5)
-bodyB.SetInertiaXX(chrono.ChVector3d(1, 1, 1))
 bodyB.SetPos(chrono.ChVector3d(0, 2, 0))  # 初始离地板有一定高度
 bodyB.AddCollisionShape(chrono.ChCollisionShapeBox(material, 1, 1, 1))
-bodyB.GetCollisionModel().BuildModel()  # ✅ 必须构建碰撞模型
 bodyB.EnableCollision(True)
 
 # 加入系统
