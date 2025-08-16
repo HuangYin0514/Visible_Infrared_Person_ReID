@@ -22,7 +22,7 @@ pend1 = chrono.ChBody()
 pend1.SetPos(chrono.ChVector3d(0, -0.5, 0))
 pend1.SetMass(0.79)
 pend1.SetInertiaXX(chrono.ChVector3d(0.01, 0.01, 0.0658))
-pend1.SetAngVelParent(chrono.ChVector3d(0, 0, 0.01))
+pend1.SetAngVelParent(chrono.ChVector3d(0.03, 0.02, 0.01))
 sys.Add(pend1)
 
 # ------------------------------------------------------------------------------
