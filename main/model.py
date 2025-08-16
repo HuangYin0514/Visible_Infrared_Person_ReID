@@ -22,6 +22,10 @@ class ReIDNet(nn.Module):
         self.backbone_pooling = GeneralizedMeanPoolingP()
         self.backbone_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
 
+        # ------------- Modal fusion -----------------------
+        self.modal_fusion_layer = Modal_Fusion(BACKBONE_FEATURES_DIM, BACKBONE_FEATURES_DIM)
+        self.modal_fusion_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
+
     def forward(self, x_vis, x_inf, modal):
         resnet_feature_map = self.backbone(x_vis, x_inf, modal)
 
@@ -106,6 +110,42 @@ class Backbone(nn.Module):
         l4_out = self.shared_layer(x)
 
         return l4_out
+
+
+class Modal_Fusion(nn.Module):
+
+    def __init__(self, input_dim, out_dim):
+        super(Modal_Fusion, self).__init__()
+
+        self.cbr = nn.Sequential(
+            nn.Conv1d(input_dim, out_dim, 1, 1, 0),
+            nn.BatchNorm1d(out_dim),
+            nn.ReLU(),
+        )
+        self.fusion_layer = Residual(
+            nn.Sequential(
+                self.cbr,
+            )
+        )
+        self.fusion_layer.apply(weights_init_kaiming)
+
+    def forward(self, features_1, features_2):
+        feature = (features_1 + features_2).unsqueeze(-1)  # (bs, 1, 2048)
+        fused = self.fusion_layer(feature).squeeze(-1)  # (bs, 2048)
+        return fused
+
+
+class Residual(nn.Module):
+    """
+    残差模块类，用于实现残差连接。
+    """
+
+    def __init__(self, fn):
+        super(Residual, self).__init__()
+        self.fn = fn
+
+    def forward(self, x):
+        return self.fn(x) + x
 
 
 def weights_init_classifier(m):

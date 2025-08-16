@@ -111,16 +111,20 @@ def run(config):
 
                 backbone_feature_map = net(vis_imgs, inf_imgs, modal="all")
 
-                # N_v = vis_labels.shape[0]
-                # N_i = inf_labels.shape[0]
-                # resnet_feature_map_vis, resnet_feature_map_inf = torch.split(backbone_feature_map, [N_v, N_i], dim=0)
-
                 # Backbone
                 backbone_feature = net.backbone_pooling(backbone_feature_map).squeeze()
-                backbone_bn_features, backbone_cls_score = net.backbone_classifier(backbone_feature)
+                backbone_bn_feature, backbone_cls_score = net.backbone_classifier(backbone_feature)
                 backbone_pid_loss = criterion.id(backbone_cls_score, labels)
                 backbone_tri_loss = criterion.tri(backbone_feature, labels)[0]
                 total_loss += backbone_pid_loss + backbone_tri_loss
+
+                # modal fusion
+                vis_feature, inf_feature = backbone_feature.chunk(2, dim=0)
+                modal_fusion_feature = net.modal_fusion_layer(vis_feature, inf_feature)
+                modal_fusion_bn_feature, modal_fusion_cls_score = net.modal_fusion_classifier(modal_fusion_feature)
+                modal_fusion_pid_loss = criterion.id(modal_fusion_cls_score, vis_labels)
+                modal_fusion_tri_loss = criterion.tri(modal_fusion_feature, vis_labels)[0]
+                total_loss += modal_fusion_pid_loss + modal_fusion_tri_loss
 
                 optimizer.zero_grad()
                 total_loss.backward()
