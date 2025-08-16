@@ -30,21 +30,21 @@ bodyA.SetMass(20)
 bodyA.SetName("BodyA")
 bodyA.SetInertiaXX(chrono.ChVector3d(10, 10, 10))
 print(bodyA.GetInertia())
-bodyA.SetPos(chrono.ChVector3d(1, -1, 0))
+bodyA.SetPos(chrono.ChVector3d(0, -1, 0))
 bodyA.AddCollisionShape(chrono.ChCollisionShapeBox(material, 10, 1, 10))
 bodyA.SetFixed(True)
 bodyA.EnableCollision(True)
 
 bodyB = chrono.ChBody()
 bodyB.SetName("BodyB")
-bodyB.SetPos(chrono.ChVector3d(1, 2, 0))
+bodyB.SetPos(chrono.ChVector3d(0, 2, 0))
 bodyB.AddCollisionShape(chrono.ChCollisionShapeBox(material, 1, 1, 1))
 bodyB.EnableCollision(True)
 
 markerB = chrono.ChMarker()
 my_funct = chrono.ChFunctionSine(3.0, 0.5)
 markerB.SetMotionX(my_funct)
-markerB.SetPos(chrono.ChVector3d(1, 2, 3))
+markerB.SetPos(chrono.ChVector3d(0, 2, 0))
 bodyB.AddMarker(markerB)
 
 my_system.Add(bodyA)
@@ -70,7 +70,7 @@ my_rep = MyReportContactCallback()
 
 # Simulation loop
 my_system.SetChTime(0)
-while my_system.GetChTime() < 12:
+while my_system.GetChTime() < 1.2:
 
     my_system.DoStepDynamics(0.01)
 
