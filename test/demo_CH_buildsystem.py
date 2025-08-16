@@ -70,7 +70,7 @@ my_rep = MyReportContactCallback()
 
 # Simulation loop
 my_system.SetChTime(0)
-while my_system.GetChTime() < 1.2:
+while my_system.GetChTime() < 12:
 
     my_system.DoStepDynamics(0.01)
 
