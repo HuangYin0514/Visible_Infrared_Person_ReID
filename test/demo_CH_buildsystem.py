@@ -1,6 +1,5 @@
 import numpy as np
 import pychrono as chrono
-from scipy.io import savemat
 
 # ------------------------------------------------------------------------------
 # 1. Create the Chrono physical system
