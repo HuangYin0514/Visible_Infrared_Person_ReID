@@ -1,68 +1,112 @@
-# =============================================================================
-# PROJECT CHRONO - http://projectchrono.org
-# Python demo: 两个刚体发生碰撞，并报告接触点
-# =============================================================================
+# ------------------------------------------------------------------------------
+# Name:        pychrono example
+# Purpose:
+#
+# Author:      Alessandro Tasora
+#
+# Created:     1/01/2019
+# Copyright:   (c) ProjectChrono 2019
+# ------------------------------------------------------------------------------
 
+print("Second tutorial: create and populate a physical system")
+
+
+# Load the Chrono::Engine core module!
 import pychrono as chrono
 
-print("演示：小方块掉落并与大方块发生碰撞")
-
-# 创建物理系统
+# Create a physical system,
 my_system = chrono.ChSystemNSC()
 
-# 创建碰撞材质
-material = chrono.ChContactMaterialNSC()
-material.SetFriction(0.5)
+# Create a contact material, shared by all collision shapes
+material = chrono.ChMaterialSurfaceNSC()
+material.SetFriction(0.3)
+material.SetCompliance(0)
 
-# -----------------------
-# 创建地面大方块（固定）
-# -----------------------
-bodyA = chrono.ChBody()
-bodyA.SetName("GroundBox")
-bodyA.SetPos(chrono.ChVector3d(0, -1, 0))
-bodyA.SetFixed(True)  # 固定不动
-bodyA.AddCollisionShape(chrono.ChCollisionShapeBox(material, 5, 1, 5))  # 半尺寸=5x1x5 => 10x2x10
-bodyA.EnableCollision(True)
-my_system.Add(bodyA)
+# Add two bodies
+my_shbodyA = chrono.ChBody()
+my_shbodyA.SetMass(20)
+my_shbodyA.SetName("BodyA")
+my_shbodyA.SetInertiaXX(chrono.ChVectorD(10, 10, 10))
+print(my_shbodyA.GetInertia())
+my_shbodyA.SetPos(chrono.ChVectorD(1, -1, 0))
+my_shbodyA.GetCollisionModel().AddBox(material, 10, 1, 10)
+my_shbodyA.SetBodyFixed(True)
+my_shbodyA.SetCollide(True)
 
-# -----------------------
-# 创建下落的小方块
-# -----------------------
-bodyB = chrono.ChBody()
-bodyB.SetName("FallingBox")
-bodyB.SetMass(1)
-bodyB.SetInertiaXX(chrono.ChVector3d(0.1, 0.1, 0.1))
-bodyB.SetPos(chrono.ChVector3d(0, 3, 0))  # 在上方
-bodyB.AddCollisionShape(chrono.ChCollisionShapeBox(material, 0.5, 0.5, 0.5))  # 半尺寸=0.5 => 边长1
-bodyB.EnableCollision(True)
-my_system.Add(bodyB)
+my_shbodyB = chrono.ChBody()
+my_shbodyB.SetName("BodyB")
+my_shbodyB.SetPos(chrono.ChVectorD(0, 2, 0))
+my_shbodyB.GetCollisionModel().AddBox(material, 1, 1, 1)
+my_shbodyB.SetCollide(True)
+
+my_shmarker = chrono.ChMarker()
+my_funct = chrono.ChFunction_Sine(0, 0.5, 3)
+my_shmarker.SetMotion_X(my_funct)
+my_shmarker.SetPos(chrono.ChVectorD(1, 2, 3))
+my_shbodyB.AddMarker(my_shmarker)
+
+my_system.Add(my_shbodyA)
+my_system.Add(my_shbodyB)
 
 
-# -----------------------
-# 定义接触报告回调
-# -----------------------
+# Add Contact callback (TO FIX!!)
+
+
+# Report Contact callback
 class MyReportContactCallback(chrono.ReportContactCallback):
     def __init__(self):
-        super().__init__()
+        chrono.ReportContactCallback.__init__(self)
 
-    def OnReportContact(self, vA, vB, cA, dist, rad, force, torque, modA, modB, cnstr_offset):
+    def OnReportContact(self, vA, vB, cA, dist, rad, force, torque, modA, modB):
         bodyUpA = chrono.CastContactableToChBody(modA)
+        nameA = bodyUpA.GetName()
         bodyUpB = chrono.CastContactableToChBody(modB)
-        print(f"  接触点: A={vA}  B={vB}  dist={dist:.6f} " f"force={force}  " f"体A={bodyUpA.GetName()}  体B={bodyUpB.GetName()}")
-        return True
+        nameB = bodyUpB.GetName()
+        print("  contact: point A=", vA, "  dist=", dist, "Body A:", nameA, "Body B:", nameB)
+        return True  # return False to stop reporting contacts
 
 
 my_rep = MyReportContactCallback()
 
-# -----------------------
-# 仿真循环
-# -----------------------
-step_size = 0.01
-while my_system.GetChTime() < 3.0:
-    my_system.DoStepDynamics(step_size)
-    print(f"time={my_system.GetChTime():.2f}  FallingBox y={bodyB.GetPos().y:.3f}")
 
-    # 打印接触信息
+# Simulation loop
+my_system.SetChTime(0)
+while my_system.GetChTime() < 1.2:
+
+    my_system.DoStepDynamics(0.01)
+
+    print("time=", my_system.GetChTime(), " bodyB y=", my_shbodyB.GetPos().y)
+
     my_system.GetContactContainer().ReportAllContacts(my_rep)
 
-print("模拟结束。")
+
+# Iterate over added bodies (Python style)
+print("Positions of all bodies in the system:")
+for abody in my_system.Get_bodylist():
+    print("  body pos=", abody.GetPos())
+
+
+# Move a body, using a ChFrame
+my_displacement = chrono.ChFrameMovingD(chrono.ChVectorD(5, 1, 0))
+my_shbodyA %= my_displacement
+# ..also as:
+#  my_shbody.ConcatenatePreTransformation(my_displacement)
+
+print("Moved body pos=", my_shbodyA.GetPos())
+
+
+# Use a body with an auxiliary reference (REF) that does not correspond
+# to the center of gravity (COG)
+body_1 = chrono.ChBodyAuxRef()
+body_1.SetName("Parte1-1")
+body_1.SetPos(chrono.ChVectorD(-0.0445347481124079, 0.0676266363930238, -0.0230808979433518))
+body_1.SetRot(chrono.ChQuaternionD(1, 0, 0, 0))
+body_1.SetMass(346.17080777653)
+body_1.SetInertiaXX(chrono.ChVectorD(48583.2418823358, 526927.118351673, 490689.966726565))
+body_1.SetInertiaXY(chrono.ChVectorD(1.70380722975012e-11, 1.40840344485366e-11, -2.31869065456271e-12))
+body_1.SetFrame_COG_to_REF(chrono.ChFrameD(chrono.ChVectorD(68.9923703887577, -60.1266363930238, 70.1327223302498), chrono.ChQuaternionD(1, 0, 0, 0)))
+myasset = chrono.ChObjShapeFile()
+myasset.SetFilename("shapes/test.obj")
+body_1.GetAssets().push_back(myasset)
+
+print("Done...")
