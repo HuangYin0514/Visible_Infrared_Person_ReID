@@ -105,8 +105,10 @@ def run(config):
             if config.MODEL.MODULE == "Lucky":
                 total_loss = 0
 
-                labels = torch.cat([vis_labels, inf_labels], 0).to(DEVICE)
+                vis_labels, inf_labels = vis_labels.to(DEVICE), inf_labels.to(DEVICE)
                 vis_imgs, inf_imgs = vis_imgs.to(DEVICE), inf_imgs.to(DEVICE)
+
+                labels = torch.cat([vis_labels, inf_labels], 0)
                 # input = torch.cat([input1, input2], 0)
 
                 backbone_feature_map = net(vis_imgs, inf_imgs, modal="all")
