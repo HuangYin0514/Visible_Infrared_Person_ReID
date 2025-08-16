@@ -24,6 +24,7 @@ bodyA.SetMass(20)
 bodyA.SetInertiaXX(chrono.ChVector3d(10, 10, 10))
 bodyA.SetPos(chrono.ChVector3d(0, -1, 0))  # 厚度1，顶面在 y=0
 bodyA.AddCollisionShape(chrono.ChCollisionShapeBox(material, 10, 1, 10))
+bodyA.GetCollisionModel().BuildModel()  # ✅ 必须构建碰撞模型
 bodyA.SetFixed(True)
 bodyA.EnableCollision(True)
 
@@ -34,6 +35,7 @@ bodyB.SetMass(5)
 bodyB.SetInertiaXX(chrono.ChVector3d(1, 1, 1))
 bodyB.SetPos(chrono.ChVector3d(0, 2, 0))  # 初始离地板有一定高度
 bodyB.AddCollisionShape(chrono.ChCollisionShapeBox(material, 1, 1, 1))
+bodyB.GetCollisionModel().BuildModel()  # ✅ 必须构建碰撞模型
 bodyB.EnableCollision(True)
 
 # 加入系统
