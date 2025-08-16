@@ -1,112 +1,87 @@
-# ------------------------------------------------------------------------------
-# Name:        pychrono example
-# Purpose:
-#
-# Author:      Alessandro Tasora
-#
-# Created:     1/01/2019
-# Copyright:   (c) ProjectChrono 2019
-# ------------------------------------------------------------------------------
-
-print("Second tutorial: create and populate a physical system")
-
-
-# Load the Chrono::Engine core module!
+import numpy as np
 import pychrono as chrono
+from scipy.io import savemat
 
-# Create a physical system,
-my_system = chrono.ChSystemNSC()
+# ------------------------------------------------------------------------------
+# 1. Create the Chrono physical system
+# ------------------------------------------------------------------------------
 
-# Create a contact material, shared by all collision shapes
-material = chrono.ChContactMaterialNSC()
-material.SetFriction(0.3)
-material.SetCompliance(0)
+sys = chrono.ChSystemSMC()
+sys.SetGravitationalAcceleration(chrono.ChVector3d(0, -9.81, 0))  # Global gravity
 
-# Add two bodies
-my_shbodyA = chrono.ChBody()
-my_shbodyA.SetMass(20)
-my_shbodyA.SetName("BodyA")
-my_shbodyA.SetInertiaXX(chrono.ChVectorD(10, 10, 10))
-print(my_shbodyA.GetInertia())
-my_shbodyA.SetPos(chrono.ChVectorD(1, -1, 0))
-my_shbodyA.GetCollisionModel().AddBox(material, 10, 1, 10)
-my_shbodyA.SetBodyFixed(True)
-my_shbodyA.SetCollide(True)
+# ------------------------------------------------------------------------------
+# 2. Create the ground body (fixed, at global origin)
+# ------------------------------------------------------------------------------
 
-my_shbodyB = chrono.ChBody()
-my_shbodyB.SetName("BodyB")
-my_shbodyB.SetPos(chrono.ChVectorD(0, 2, 0))
-my_shbodyB.GetCollisionModel().AddBox(material, 1, 1, 1)
-my_shbodyB.SetCollide(True)
+ground = chrono.ChBody()
+ground.SetFixed(True)
+ground.SetPos(chrono.ChVector3d(0, 0, 0))  # Explicit in global frame
+sys.Add(ground)
 
-my_shmarker = chrono.ChMarker()
-my_funct = chrono.ChFunction_Sine(0, 0.5, 3)
-my_shmarker.SetMotion_X(my_funct)
-my_shmarker.SetPos(chrono.ChVectorD(1, 2, 3))
-my_shbodyB.AddMarker(my_shmarker)
+# ------------------------------------------------------------------------------
+# 3. Create the pendulum body (initial position, orientation, velocity all in global)
+# ------------------------------------------------------------------------------
 
-my_system.Add(my_shbodyA)
-my_system.Add(my_shbodyB)
+pend1 = chrono.ChBody()
 
+# Set global position of pendulum CG
+pend1.SetPos(chrono.ChVector3d(0, -0.5, 0))  # 0.5m below joint in Y (gravity) direction
 
-# Add Contact callback (TO FIX!!)
+# Set mass and inertia
+pend1.SetMass(0.79)
+pend1.SetInertiaXX(chrono.ChVector3d(0.01, 0.01, 0.0658))  # principal inertias
+# Put dummy inertia in X and Y direction. Otherwise it gives Inf solution
 
+# Set angular velocity in global frame (around Z-axis)
+pend1.SetAngVelParent(chrono.ChVector3d(0, 0, 0.01))  # radians/sec in global Z
+sys.Add(pend1)
 
-# Report Contact callback
-class MyReportContactCallback(chrono.ReportContactCallback):
-    def __init__(self):
-        chrono.ReportContactCallback.__init__(self)
+# ------------------------------------------------------------------------------
+# 4. Revolute joint between ground and pend1 (at global origin, around global Z)
+# ------------------------------------------------------------------------------
 
-    def OnReportContact(self, vA, vB, cA, dist, rad, force, torque, modA, modB):
-        bodyUpA = chrono.CastContactableToChBody(modA)
-        nameA = bodyUpA.GetName()
-        bodyUpB = chrono.CastContactableToChBody(modB)
-        nameB = bodyUpB.GetName()
-        print("  contact: point A=", vA, "  dist=", dist, "Body A:", nameA, "Body B:", nameB)
-        return True  # return False to stop reporting contacts
+# Frame at joint location (global coordinates)
+joint_frame = chrono.ChFramed(chrono.ChVector3d(0, 0, 0))  # Revolute joint at origin
+joint1 = chrono.ChLinkRevolute()
+joint1.Initialize(ground, pend1, joint_frame)
 
+sys.Add(joint1)
 
-my_rep = MyReportContactCallback()
+# Simulation parameters
+end_time = 50.0  # seconds
+step_size = 0.01
+time = 0.0
 
+# Initialize storage lists
+time_data = []
+pend1_x, pend1_y, pend1_z = [], [], []
+pend2_x, pend2_y, pend2_z = [], [], []
 
-# Simulation loop
-my_system.SetChTime(0)
-while my_system.GetChTime() < 1.2:
+# Run the simulation
+while time < end_time:
+    sys.DoStepDynamics(step_size)
 
-    my_system.DoStepDynamics(0.01)
+    # Get positions
+    pos1 = pend1.GetPos()
 
-    print("time=", my_system.GetChTime(), " bodyB y=", my_shbodyB.GetPos().y)
+    # Append data to lists
+    time_data.append(time)
 
-    my_system.GetContactContainer().ReportAllContacts(my_rep)
+    pend1_x.append(pos1.x)
+    pend1_y.append(pos1.y)
+    pend1_z.append(pos1.z)
 
+    time += step_size
 
-# Iterate over added bodies (Python style)
-print("Positions of all bodies in the system:")
-for abody in my_system.Get_bodylist():
-    print("  body pos=", abody.GetPos())
+# Prepare data dictionary
+mat_data = {
+    "time": np.array(time_data, dtype=np.float64),
+    "pend1_x": np.array(pend1_x, dtype=np.float64),
+    "pend1_y": np.array(pend1_y, dtype=np.float64),
+    "pend1_z": np.array(pend1_z, dtype=np.float64),
+    "pend2_x": np.array(pend2_x, dtype=np.float64),
+    "pend2_y": np.array(pend2_y, dtype=np.float64),
+    "pend2_z": np.array(pend2_z, dtype=np.float64),
+}
 
-
-# Move a body, using a ChFrame
-my_displacement = chrono.ChFrameMovingD(chrono.ChVectorD(5, 1, 0))
-my_shbodyA %= my_displacement
-# ..also as:
-#  my_shbody.ConcatenatePreTransformation(my_displacement)
-
-print("Moved body pos=", my_shbodyA.GetPos())
-
-
-# Use a body with an auxiliary reference (REF) that does not correspond
-# to the center of gravity (COG)
-body_1 = chrono.ChBodyAuxRef()
-body_1.SetName("Parte1-1")
-body_1.SetPos(chrono.ChVectorD(-0.0445347481124079, 0.0676266363930238, -0.0230808979433518))
-body_1.SetRot(chrono.ChQuaternionD(1, 0, 0, 0))
-body_1.SetMass(346.17080777653)
-body_1.SetInertiaXX(chrono.ChVectorD(48583.2418823358, 526927.118351673, 490689.966726565))
-body_1.SetInertiaXY(chrono.ChVectorD(1.70380722975012e-11, 1.40840344485366e-11, -2.31869065456271e-12))
-body_1.SetFrame_COG_to_REF(chrono.ChFrameD(chrono.ChVectorD(68.9923703887577, -60.1266363930238, 70.1327223302498), chrono.ChQuaternionD(1, 0, 0, 0)))
-myasset = chrono.ChObjShapeFile()
-myasset.SetFilename("shapes/test.obj")
-body_1.GetAssets().push_back(myasset)
-
-print("Done...")
+print(mat_data)
