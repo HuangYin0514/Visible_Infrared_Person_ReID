@@ -11,8 +11,9 @@
 # =============================================================================
 
 
-import numpy as np
 import pychrono.core as chrono
+import matplotlib.pyplot as plt
+import numpy as np
 
 print("Example: create a slider crank and plot results")
 
@@ -87,11 +88,26 @@ mjointC.Initialize(mpiston, mfloor, chrono.ChFramed(crank_center + chrono.ChVect
 sys.Add(mjointC)
 
 
-# Simulation parameters
-end_time = 50.0  # seconds
-step_size = 0.01
-time = 0.0
+# ---------------------------------------------------------------------
+#
+#  Create an Irrlicht application to visualize the sys
+#
 
+vis = chronoirr.ChVisualSystemIrrlicht()
+vis.AttachSystem(sys)
+vis.SetWindowSize(1024, 768)
+vis.SetWindowTitle("Crank demo")
+vis.Initialize()
+vis.AddLogo(chrono.GetChronoDataFile("logo_chrono_alpha.png"))
+vis.AddSkyBox()
+vis.AddCamera(chrono.ChVector3d(1, 1, 3), chrono.ChVector3d(0, 1, 0))
+vis.AddTypicalLights()
+
+
+# ---------------------------------------------------------------------
+#
+#  Run the simulation
+#
 
 # Initialize these lists to store values to plot.
 array_time = []
@@ -99,21 +115,35 @@ array_angle = []
 array_pos = []
 array_speed = []
 
-# Run the simulation
-while time < end_time:
-    sys.DoStepDynamics(step_size)
+# Run the interactive simulation loop
+while vis.Run():
 
     # for plotting, append instantaneous values:
     array_time.append(sys.GetChTime())
-    angle = my_motor.GetMotorAngle()
-    pos = mpiston.GetPos().x
-    speed = mpiston.GetPosDt().x
+    array_angle.append(my_motor.GetMotorAngle())
+    array_pos.append(mpiston.GetPos().x)
+    array_speed.append(mpiston.GetPosDt().x)
 
-    array_angle.append(angle)
-    array_pos.append(pos)
-    array_speed.append(speed)
+    # here happens the visualization and step time integration
+    vis.BeginScene()
+    vis.Render()
+    vis.EndScene()
+    sys.DoStepDynamics(1e-3)
 
-    # print corresponding information
-    print(f"time:{sys.GetChTime():.4f}, angle:{angle:.6f}, pos:{pos:.6f}, speed:{speed:.6f}")
+    # stop simulation after 2 seconds
+    if sys.GetChTime() > 20:
+        vis.GetDevice().closeDevice()
 
-    time += step_size
+# Use matplotlib to make two plots when simulation ended:
+fig, (ax1, ax2) = plt.subplots(2, sharex=True)
+
+ax1.plot(array_angle, array_pos)
+ax1.set(ylabel="position [m]")
+ax1.grid()
+
+ax2.plot(array_angle, array_speed, "r--")
+ax2.set(ylabel="speed [m]", xlabel="angle [rad]")
+ax2.grid()
+
+# trick to plot \pi on x axis of plots instead of 1 2 3 4 etc.
+plt.xticks(np.linspace(0, 2 * np.pi, 5), ["0", r"$\pi/2$", r"$\pi$", r"$3\pi/2$", r"$2\pi$"])
