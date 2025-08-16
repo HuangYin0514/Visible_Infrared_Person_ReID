@@ -32,14 +32,14 @@ bodyA = chrono.ChBody()
 bodyA.SetMass(20)
 bodyA.SetName("BodyA")
 bodyA.SetInertiaXX(chrono.ChVector3d(10, 10, 10))
-bodyA.SetPos(chrono.ChVector3d(0, -1, 0))
+bodyA.SetPos(chrono.ChVector3d(0, 2, 0))
 bodyA.AddCollisionShape(chrono.ChCollisionShapeBox(material, 10, 1, 10))
 bodyA.SetFixed(True)
 bodyA.EnableCollision(True)
 
 bodyB = chrono.ChBody()
 bodyB.SetName("BodyB")
-bodyB.SetPos(chrono.ChVector3d(0, 2, 0))  # 高处开始
+bodyB.SetPos(chrono.ChVector3d(0, 5, 0))  # 高处开始
 bodyB.AddCollisionShape(chrono.ChCollisionShapeBox(material, 1, 1, 1))
 bodyB.SetMass(5)
 bodyB.EnableCollision(True)
