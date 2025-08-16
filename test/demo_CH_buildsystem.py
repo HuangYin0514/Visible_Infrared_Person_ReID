@@ -60,6 +60,9 @@ while time < end_time:
     sys.DoStepDynamics(step_size)
 
     # Get positions
-    pos = pend1.GetPos()
-    print(f"{time:.4f} {pos.x:.6f} {pos.y:.6f} {pos.z:.6f}")
+    pos1 = pend1.GetPos()
+    pos2 = pend2.GetPos()
+
+    print(f"time:{time:.4f},pend1_x:{pos1.x:.6f},pend1_y:{pos1.y:.6f},pend1_z:{pos1.z:.6f}," f"pend2_x:{pos2.x:.6f},pend2_y:{pos2.y:.6f},pend2_z:{pos2.z:.6f}")
+
     time += step_size
