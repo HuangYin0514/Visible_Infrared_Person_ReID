@@ -1,111 +1,77 @@
 # =============================================================================
 # PROJECT CHRONO - http://projectchrono.org
 #
-# Copyright (c) 2014 projectchrono.org
-# All rights reserved.
-#
-# Use of this source code is governed by a BSD-style license that can be found
-# in the LICENSE file at the top level of the distribution and at
-# http://projectchrono.org/license-chrono.txt.
-#
+# 示例：两个刚体碰撞检测（含重力）
 # =============================================================================
 
-print("Second tutorial: create and populate a physical system")
+print("Second tutorial: create and populate a physical system with collision")
 
-
-# Load the Chrono core module!
 import pychrono as chrono
 
-# Create a physical system,
+# 1. 创建物理系统，并启用重力
 my_system = chrono.ChSystemNSC()
+my_system.SetGravitationalAcceleration(chrono.ChVector3d(0, -9.81, 0))  # ✅ 重力向下
 
-# Create a contact material, shared by all collision shapes
+# 2. 创建接触材质
 material = chrono.ChContactMaterialNSC()
 material.SetFriction(0.3)
 material.SetCompliance(0)
-# Create a physical system,
-my_system = chrono.ChSystemNSC()
-my_system.SetGravitationalAcceleration(chrono.ChVector3d(0, -9.81, 0))  # ✅ 启用重力
 
-# Add two bodies
+# 3. 创建地板（固定刚体）
 bodyA = chrono.ChBody()
-bodyA.SetMass(20)
 bodyA.SetName("BodyA")
+bodyA.SetMass(20)
 bodyA.SetInertiaXX(chrono.ChVector3d(10, 10, 10))
-bodyA.SetPos(chrono.ChVector3d(0, 2, 0))
+bodyA.SetPos(chrono.ChVector3d(0, -1, 0))  # 厚度1，顶面在 y=0
 bodyA.AddCollisionShape(chrono.ChCollisionShapeBox(material, 10, 1, 10))
 bodyA.SetFixed(True)
 bodyA.EnableCollision(True)
 
+# 4. 创建小方块（会下落）
 bodyB = chrono.ChBody()
 bodyB.SetName("BodyB")
-bodyB.SetPos(chrono.ChVector3d(0, 5, 0))  # 高处开始
-bodyB.AddCollisionShape(chrono.ChCollisionShapeBox(material, 1, 1, 1))
 bodyB.SetMass(5)
+bodyB.SetInertiaXX(chrono.ChVector3d(1, 1, 1))
+bodyB.SetPos(chrono.ChVector3d(0, 2, 0))  # 初始离地板有一定高度
+bodyB.AddCollisionShape(chrono.ChCollisionShapeBox(material, 1, 1, 1))
 bodyB.EnableCollision(True)
 
+# 加入系统
 my_system.Add(bodyA)
 my_system.Add(bodyB)
 
 
-# Report Contact callback
+# 5. 定义碰撞回调
 class MyReportContactCallback(chrono.ReportContactCallback):
     def __init__(self):
         chrono.ReportContactCallback.__init__(self)
 
     def OnReportContact(self, vA, vB, cA, dist, rad, force, torque, modA, modB, cnstr_offset):
         bodyUpA = chrono.CastContactableToChBody(modA)
-        nameA = bodyUpA.GetName()
         bodyUpB = chrono.CastContactableToChBody(modB)
-        nameB = bodyUpB.GetName()
-        print("  contact: point A=", vA, "  dist=", dist, "first body:", nameA, "second body:", nameB)
-        return True  # return False to stop reporting contacts
+        print(f"  接触点A={vA}  距离={dist:.4f}  碰撞: {bodyUpA.GetName()} <-> {bodyUpB.GetName()}")
+        return True  # 返回 False 会停止遍历
 
 
 my_rep = MyReportContactCallback()
 
 
-# Simulation loop
+# 6. 仿真循环
 my_system.SetChTime(0)
 while my_system.GetChTime() < 1.2:
 
     my_system.DoStepDynamics(0.01)
 
-    print("time=", my_system.GetChTime(), " bodyB y=", bodyB.GetPos().y)
+    print("time=", round(my_system.GetChTime(), 2), " BodyB pos y=", round(bodyB.GetPos().y, 3))
 
+    # 打印所有接触
     my_system.GetContactContainer().ReportAllContacts(my_rep)
 
 print("----------")
 
-# Iterate over added bodies (Python style)
+# 7. 输出所有刚体的位置
 print("Positions of all bodies in the system:")
 for abody in my_system.GetBodies():
     print(" ", abody.GetName(), " pos =", abody.GetPos())
-
-# # Use a body with an auxiliary reference (REF) that does not correspond to the center of gravity (COG)
-# bodyC = chrono.ChBodyAuxRef()
-# my_system.AddBody(bodyC)
-# bodyC.SetName("Parte1-1")
-# bodyC.SetPos(chrono.ChVector3d(-0.0445347481124079, 0.0676266363930238, -0.0230808979433518))
-# bodyC.SetRot(chrono.ChQuaterniond(1, 0, 0, 0))
-# bodyC.SetMass(346.17080777653)
-# bodyC.SetInertiaXX(chrono.ChVector3d(48583.2418823358, 526927.118351673, 490689.966726565))
-# bodyC.SetInertiaXY(chrono.ChVector3d(1.70380722975012e-11, 1.40840344485366e-11, -2.31869065456271e-12))
-# bodyC.SetFrameCOMToRef(chrono.ChFramed(chrono.ChVector3d(68.9923703887577, -60.1266363930238, 70.1327223302498), chrono.ChQuaterniond(1, 0, 0, 0)))
-# myasset = chrono.ChVisualShapeModelFile()
-# myasset.SetFilename("shapes/test.obj")
-# bodyC.AddVisualShape(myasset)
-
-# # Add a revolute joint
-# rev = chrono.ChLinkLockRevolute()
-# rev.SetName("Revolute")
-# rev.Initialize(bodyA, bodyC, chrono.ChFramed(chrono.ChVector3d(1, 2, 3), chrono.ChQuaterniond(1, 0, 0, 0)))
-# my_system.AddLink(rev)
-
-# # Iterate over added links (Python style)
-# print("Names of all links in the system:")
-# for alink in my_system.GetLinks():
-#     print("  link: ", alink.GetName())
-
 
 print("Done...")
