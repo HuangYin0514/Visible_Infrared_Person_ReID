@@ -23,13 +23,15 @@ my_system = chrono.ChSystemNSC()
 material = chrono.ChContactMaterialNSC()
 material.SetFriction(0.3)
 material.SetCompliance(0)
+# Create a physical system,
+my_system = chrono.ChSystemNSC()
+my_system.SetGravitationalAcceleration(chrono.ChVector3d(0, -9.81, 0))  # ✅ 启用重力
 
 # Add two bodies
 bodyA = chrono.ChBody()
 bodyA.SetMass(20)
 bodyA.SetName("BodyA")
 bodyA.SetInertiaXX(chrono.ChVector3d(10, 10, 10))
-print(bodyA.GetInertia())
 bodyA.SetPos(chrono.ChVector3d(0, -1, 0))
 bodyA.AddCollisionShape(chrono.ChCollisionShapeBox(material, 10, 1, 10))
 bodyA.SetFixed(True)
@@ -37,15 +39,10 @@ bodyA.EnableCollision(True)
 
 bodyB = chrono.ChBody()
 bodyB.SetName("BodyB")
-bodyB.SetPos(chrono.ChVector3d(0, 2, 0))
+bodyB.SetPos(chrono.ChVector3d(0, 2, 0))  # 高处开始
 bodyB.AddCollisionShape(chrono.ChCollisionShapeBox(material, 1, 1, 1))
+bodyB.SetMass(5)
 bodyB.EnableCollision(True)
-
-markerB = chrono.ChMarker()
-my_funct = chrono.ChFunctionSine(3.0, 0.5)
-markerB.SetMotionX(my_funct)
-markerB.SetPos(chrono.ChVector3d(0, 2, 0))
-bodyB.AddMarker(markerB)
 
 my_system.Add(bodyA)
 my_system.Add(bodyB)
