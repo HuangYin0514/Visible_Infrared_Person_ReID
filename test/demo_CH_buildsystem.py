@@ -58,7 +58,7 @@ my_rep = MyReportContactCallback()
 # 仿真循环
 # -----------------------
 step_size = 0.01
-while my_system.GetChTime() < 1.0:
+while my_system.GetChTime() < 3.0:
     my_system.DoStepDynamics(step_size)
     print(f"time={my_system.GetChTime():.2f}  FallingBox y={bodyB.GetPos().y:.3f}")
 
