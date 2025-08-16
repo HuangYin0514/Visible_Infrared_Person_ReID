@@ -37,7 +37,7 @@ bodyA.EnableCollision(True)
 
 bodyB = chrono.ChBody()
 bodyB.SetName("BodyB")
-bodyB.SetPos(chrono.ChVector3d(1, 2, 0))
+bodyB.SetPos(chrono.ChVector3d(0, 2, 0))
 bodyB.AddCollisionShape(chrono.ChCollisionShapeBox(material, 1, 1, 1))
 bodyB.EnableCollision(True)
 
