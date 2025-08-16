@@ -124,7 +124,7 @@ def run(config):
                 vis_feature, inf_feature = backbone_feature.chunk(2, dim=0)
                 modal_fusion_feature = net.modal_fusion_layer(vis_feature, inf_feature)
                 modal_fusion_bn_feature, modal_fusion_cls_score = net.modal_fusion_classifier(modal_fusion_feature)
-                modal_fusion_pid_loss = criterion.id(modal_fusion_cls_score, (vis_labels * 0 + 0.5).int())
+                modal_fusion_pid_loss = criterion.id(modal_fusion_cls_score, (vis_labels * 0 + 0.5).long())
                 total_loss += modal_fusion_pid_loss
 
                 optimizer.zero_grad()
