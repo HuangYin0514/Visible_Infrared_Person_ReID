@@ -85,30 +85,30 @@ print("Positions of all bodies in the system:")
 for abody in my_system.GetBodies():
     print(" ", abody.GetName(), " pos =", abody.GetPos())
 
-# Use a body with an auxiliary reference (REF) that does not correspond to the center of gravity (COG)
-bodyC = chrono.ChBodyAuxRef()
-my_system.AddBody(bodyC)
-bodyC.SetName("Parte1-1")
-bodyC.SetPos(chrono.ChVector3d(-0.0445347481124079, 0.0676266363930238, -0.0230808979433518))
-bodyC.SetRot(chrono.ChQuaterniond(1, 0, 0, 0))
-bodyC.SetMass(346.17080777653)
-bodyC.SetInertiaXX(chrono.ChVector3d(48583.2418823358, 526927.118351673, 490689.966726565))
-bodyC.SetInertiaXY(chrono.ChVector3d(1.70380722975012e-11, 1.40840344485366e-11, -2.31869065456271e-12))
-bodyC.SetFrameCOMToRef(chrono.ChFramed(chrono.ChVector3d(68.9923703887577, -60.1266363930238, 70.1327223302498), chrono.ChQuaterniond(1, 0, 0, 0)))
-myasset = chrono.ChVisualShapeModelFile()
-myasset.SetFilename("shapes/test.obj")
-bodyC.AddVisualShape(myasset)
+# # Use a body with an auxiliary reference (REF) that does not correspond to the center of gravity (COG)
+# bodyC = chrono.ChBodyAuxRef()
+# my_system.AddBody(bodyC)
+# bodyC.SetName("Parte1-1")
+# bodyC.SetPos(chrono.ChVector3d(-0.0445347481124079, 0.0676266363930238, -0.0230808979433518))
+# bodyC.SetRot(chrono.ChQuaterniond(1, 0, 0, 0))
+# bodyC.SetMass(346.17080777653)
+# bodyC.SetInertiaXX(chrono.ChVector3d(48583.2418823358, 526927.118351673, 490689.966726565))
+# bodyC.SetInertiaXY(chrono.ChVector3d(1.70380722975012e-11, 1.40840344485366e-11, -2.31869065456271e-12))
+# bodyC.SetFrameCOMToRef(chrono.ChFramed(chrono.ChVector3d(68.9923703887577, -60.1266363930238, 70.1327223302498), chrono.ChQuaterniond(1, 0, 0, 0)))
+# myasset = chrono.ChVisualShapeModelFile()
+# myasset.SetFilename("shapes/test.obj")
+# bodyC.AddVisualShape(myasset)
 
-# Add a revolute joint
-rev = chrono.ChLinkLockRevolute()
-rev.SetName("Revolute")
-rev.Initialize(bodyA, bodyC, chrono.ChFramed(chrono.ChVector3d(1, 2, 3), chrono.ChQuaterniond(1, 0, 0, 0)))
-my_system.AddLink(rev)
+# # Add a revolute joint
+# rev = chrono.ChLinkLockRevolute()
+# rev.SetName("Revolute")
+# rev.Initialize(bodyA, bodyC, chrono.ChFramed(chrono.ChVector3d(1, 2, 3), chrono.ChQuaterniond(1, 0, 0, 0)))
+# my_system.AddLink(rev)
 
-# Iterate over added links (Python style)
-print("Names of all links in the system:")
-for alink in my_system.GetLinks():
-    print("  link: ", alink.GetName())
+# # Iterate over added links (Python style)
+# print("Names of all links in the system:")
+# for alink in my_system.GetLinks():
+#     print("  link: ", alink.GetName())
 
 
 print("Done...")
