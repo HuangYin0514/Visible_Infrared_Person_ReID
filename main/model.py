@@ -3,6 +3,7 @@ import copy
 import torch
 import torch.nn as nn
 from gem_pool import GeneralizedMeanPoolingP
+from model_tool import *
 from resnet import resnet50
 from resnet_ibn_a import resnet50_ibn_a
 
@@ -22,20 +23,16 @@ class ReIDNet(nn.Module):
         self.backbone_pooling = GeneralizedMeanPoolingP()
         self.backbone_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
 
-        # ------------- Modal fusion -----------------------
-        self.modal_fusion_layer = Modal_Fusion(BACKBONE_FEATURES_DIM, BACKBONE_FEATURES_DIM)
-        self.modal_fusion_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
-
     def forward(self, x_vis, x_inf, modal):
-        resnet_feature_map = self.backbone(x_vis, x_inf, modal)
+        shared_feature_map, specific_feature_map = self.backbone(x_vis, x_inf, modal)
 
         if self.training:
-            return resnet_feature_map
+            return shared_feature_map, specific_feature_map
         else:
             eval_features = []
 
             # Backbone
-            backbone_features = self.backbone_pooling(resnet_feature_map).squeeze()
+            backbone_features = self.backbone_pooling(shared_feature_map).squeeze()
             backbone_bn_features, backbone_cls_score = self.backbone_classifier(backbone_features)
             eval_features.append(backbone_bn_features)
 
@@ -80,97 +77,30 @@ class Backbone(nn.Module):
         resnet.layer4[0].conv2.stride = (1, 1)
 
         # Backbone structure
-        self.vis_pre_layer = nn.Sequential(
+        self.low_shared_layer = nn.Sequential(
             resnet.conv1,
             resnet.bn1,
             resnet.relu,
             resnet.maxpool,
             resnet.layer1,
+            resnet.layer2,
         )
-        self.inf_pre_layer = copy.deepcopy(self.vis_pre_layer)
 
         self.shared_layer = nn.Sequential(
-            resnet.layer2,
             resnet.layer3,
             resnet.layer4,
         )
 
+        self.specific_layer = copy.deepcopy(self.shared_layer)
+
     def forward(self, x_vis, x_inf, modal):
         if modal == "all":
-            x_vis = self.vis_pre_layer(x_vis)
-            x_inf = self.inf_pre_layer(x_inf)
             x = torch.cat([x_vis, x_inf], dim=0)
         elif modal == "vis":
-            x_vis = self.vis_pre_layer(x_vis)
             x = x_vis
         elif modal == "inf":
-            x_inf = self.inf_pre_layer(x_inf)
             x = x_inf
-
-        l4_out = self.shared_layer(x)
-
-        return l4_out
-
-
-class Modal_Fusion(nn.Module):
-
-    def __init__(self, input_dim, out_dim):
-        super(Modal_Fusion, self).__init__()
-
-        self.cbr = nn.Sequential(
-            nn.Conv1d(input_dim, out_dim, 1, 1, 0),
-            nn.BatchNorm1d(out_dim),
-            nn.ReLU(),
-        )
-        self.fusion_layer = Residual(
-            nn.Sequential(
-                self.cbr,
-            )
-        )
-        self.fusion_layer.apply(weights_init_kaiming)
-
-    def forward(self, features_1, features_2):
-        feature = (features_1 + features_2).unsqueeze(-1)  # (bs, 1, 2048)
-        fused = self.fusion_layer(feature).squeeze(-1)  # (bs, 2048)
-        return fused
-
-
-class Residual(nn.Module):
-    """
-    残差模块类，用于实现残差连接。
-    """
-
-    def __init__(self, fn):
-        super(Residual, self).__init__()
-        self.fn = fn
-
-    def forward(self, x):
-        return self.fn(x) + x
-
-
-def weights_init_classifier(m):
-    classname = m.__class__.__name__
-    if classname.find("Linear") != -1:
-        nn.init.normal_(m.weight, std=0.001)
-        if m.bias:
-            nn.init.constant_(m.bias, 0.0)
-
-
-def weights_init_kaiming(m):
-    classname = m.__class__.__name__
-    if classname.find("Linear") != -1:
-        nn.init.kaiming_normal_(m.weight, a=0, mode="fan_out")
-        if m.bias is not None:
-            nn.init.constant_(m.bias, 0)
-    elif classname.find("Conv") != -1:
-        nn.init.kaiming_normal_(m.weight, a=0, mode="fan_in")
-        if m.bias is not None:
-            nn.init.constant_(m.bias, 0.0)
-    elif classname.find("BatchNorm") != -1:
-        if m.affine:
-            nn.init.constant_(m.weight, 1.0)
-            nn.init.constant_(m.bias, 0.0)
-    elif classname.find("InstanceNorm") != -1:
-        if m.affine:
-            nn.init.constant_(m.weight, 1.0)
-            nn.init.constant_(m.bias, 0.0)
+        outs = self.low_shared_layer(x)
+        shared_feature_map = self.shared_layer(outs)
+        specific_feature_map = self.specific_layer(outs)
+        return shared_feature_map, specific_feature_map

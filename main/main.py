@@ -107,25 +107,16 @@ def run(config):
 
                 vis_labels, inf_labels = vis_labels.to(DEVICE), inf_labels.to(DEVICE)
                 vis_imgs, inf_imgs = vis_imgs.to(DEVICE), inf_imgs.to(DEVICE)
-
                 labels = torch.cat([vis_labels, inf_labels], 0)
-                # input = torch.cat([input1, input2], 0)
 
-                backbone_feature_map = net(vis_imgs, inf_imgs, modal="all")
+                shared_feature_map, specific_feature_map = net(vis_imgs, inf_imgs, modal="all")
 
                 # Backbone
-                backbone_feature = net.backbone_pooling(backbone_feature_map).squeeze()
+                backbone_feature = net.backbone_pooling(shared_feature_map).squeeze()
                 backbone_bn_feature, backbone_cls_score = net.backbone_classifier(backbone_feature)
                 backbone_pid_loss = criterion.id(backbone_cls_score, labels)
                 backbone_tri_loss = criterion.tri(backbone_feature, labels)[0]
                 total_loss += backbone_pid_loss + backbone_tri_loss
-
-                # modal fusion
-                vis_feature, inf_feature = backbone_feature.chunk(2, dim=0)
-                modal_fusion_feature = net.modal_fusion_layer(vis_feature, inf_feature)
-                modal_fusion_bn_feature, modal_fusion_cls_score = net.modal_fusion_classifier(modal_fusion_feature)
-                modal_fusion_pid_loss = criterion.id(modal_fusion_cls_score, (vis_labels * 0 + 0.5).long())
-                total_loss += modal_fusion_pid_loss
 
                 optimizer.zero_grad()
                 total_loss.backward()
