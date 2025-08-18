@@ -109,7 +109,7 @@ def run(config):
                 vis_imgs, inf_imgs = vis_imgs.to(DEVICE), inf_imgs.to(DEVICE)
                 # input = torch.cat([input1, input2], 0)
 
-                backbone_feature_map = net(vis_imgs, inf_imgs, modal="all")
+                backbone_feature_map, specific_feature_map = net(vis_imgs, inf_imgs, modal="all")
 
                 # N_v = vis_labels.shape[0]
                 # N_i = inf_labels.shape[0]
