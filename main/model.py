@@ -76,8 +76,8 @@ class Backbone(nn.Module):
         resnet.layer4[0].downsample[0].stride = (1, 1)
         resnet.layer4[0].conv2.stride = (1, 1)
 
-        self.backbone_encoder_module = Backbone_Encoder_Module(resnet, use_NL=False)
-        self.backbone_decoupling_module = Backbone_Decoupling_Module(resnet, use_NL=False)
+        self.backbone_encoder_module = Backbone_Encoder_Module(resnet, use_NL=True)
+        self.backbone_decoupling_module = Backbone_Decoupling_Module(resnet, use_NL=True)
 
         self.shared_module = self.backbone_decoupling_module
         self.specific_module = copy.deepcopy(self.backbone_decoupling_module)
