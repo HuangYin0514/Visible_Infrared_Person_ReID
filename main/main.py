@@ -104,6 +104,7 @@ def run(config):
             net.train()
             if config.MODEL.MODULE == "Lucky":
                 total_loss = 0
+                batch_size = vis_imgs.size(0) * 2
 
                 labels = torch.cat([vis_labels, inf_labels], 0).to(DEVICE)
                 vis_imgs, inf_imgs = vis_imgs.to(DEVICE), inf_imgs.to(DEVICE)
@@ -121,6 +122,14 @@ def run(config):
                 backbone_pid_loss = criterion.id(backbone_cls_score, labels)
                 backbone_tri_loss = criterion.tri(backbone_feature, labels)[0]
                 total_loss += backbone_pid_loss + backbone_tri_loss
+
+                # Confuser
+                modal_label = torch.cat([torch.zeros(batch_size // 2, dtype=torch.long), torch.ones(batch_size // 2, dtype=torch.long)])
+                idx = torch.randperm(batch_size)
+                modal_label = modal_label[idx].to(DEVICE)
+                bn_feature, modal_cls_score = net.modal_confuser(backbone_feature)
+                modal_loss = criterion.id(modal_cls_score, modal_label)
+                total_loss += modal_loss
 
                 optimizer.zero_grad()
                 total_loss.backward()
