@@ -10,6 +10,7 @@ class Optimizer:
         ################################################################################
         # Ignored parameters
         ignored_params = []
+        ignored_params += list(map(id, net.backbone_pooling.parameters()))
         ignored_params += list(map(id, net.backbone_classifier.parameters()))
 
         ################################################################################
