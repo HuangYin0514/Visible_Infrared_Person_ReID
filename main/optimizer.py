@@ -8,23 +8,19 @@ class Optimizer:
 
     def load_optimizer(self, config, net):
         ################################################################################
+        special_modules = [
+            net.backbone_classifier,
+        ]
+
         # Ignored parameters
         ignored_params = []
-        ignored_params += list(map(id, net.backbone_classifier.parameters()))
+        for module in special_modules:
+            ignored_params += list(map(id, module.parameters()))
 
-        ################################################################################
-        # Base parameters
         base_params = filter(lambda p: id(p) not in ignored_params, net.parameters())
 
-        ################################################################################
-        # Optimizer
-        optimizer = optim.SGD(
-            [
-                {"params": base_params, "lr": 0.1 * config.OPTIMIZER.LEARNING_RATE},
-                {"params": net.backbone_classifier.parameters(), "lr": config.OPTIMIZER.LEARNING_RATE},
-            ],
-            weight_decay=5e-4,
-            momentum=0.9,
-            nesterov=True,
-        )
-        self.optimizer = optimizer
+        param_groups = [{"params": base_params, "lr": 0.1 * config.OPTIMIZER.LEARNING_RATE}]
+        for module in special_modules:
+            param_groups.append({"params": module.parameters(), "lr": config.OPTIMIZER.LEARNING_RATE})
+
+        self.optimizer = optim.SGD(param_groups, weight_decay=5e-4, momentum=0.9, nesterov=True)
