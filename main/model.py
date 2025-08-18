@@ -24,15 +24,15 @@ class ReIDNet(nn.Module):
         self.backbone_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
 
     def forward(self, x_vis, x_inf, modal):
-        resnet_feature_map = self.backbone(x_vis, x_inf, modal)
+        backbone_feature_map, specific_feature_map = self.backbone(x_vis, x_inf, modal)
 
         if self.training:
-            return resnet_feature_map, None
+            return backbone_feature_map, specific_feature_map
         else:
             eval_features = []
 
             # Backbone
-            backbone_features = self.backbone_pooling(resnet_feature_map).squeeze()
+            backbone_features = self.backbone_pooling(backbone_feature_map).squeeze()
             backbone_bn_features, backbone_cls_score = self.backbone_classifier(backbone_features)
             eval_features.append(backbone_bn_features)
 
@@ -76,83 +76,92 @@ class Backbone(nn.Module):
         resnet.layer4[0].downsample[0].stride = (1, 1)
         resnet.layer4[0].conv2.stride = (1, 1)
 
-        # Backbone structure
-        self.vis_specific_layer = nn.Sequential(
+        self.backbone_encoder_module = Backbone_Encoder_Module(resnet, use_NL=False)
+        self.backbone_decoupling_module = Backbone_Decoupling_Module(resnet, use_NL=False)
+
+        self.shared_module = self.backbone_decoupling_module
+        self.specific_module = copy.deepcopy(self.backbone_decoupling_module)
+
+    def forward(self, x_vis, x_inf, modal):
+        if modal == "all":
+            x = torch.cat([x_vis, x_inf], dim=0)
+        elif modal == "vis":
+            x = x_vis
+        elif modal == "inf":
+            x = x_inf
+
+        encoder_out = self.backbone_encoder_module(x)
+        shared_out = self.shared_module(encoder_out)
+        specific_out = self.specific_module(encoder_out)
+        return shared_out, specific_out
+
+
+class Backbone_Encoder_Module(nn.Module):
+    """conv1 bn1 relu maxpool layer1 layer2"""
+
+    def __init__(self, resnet, use_NL=False):
+        super(Backbone_Encoder_Module, self).__init__()
+        self.use_NL = use_NL
+
+        self.pre_processing_layer = nn.Sequential(
             resnet.conv1,
             resnet.bn1,
             resnet.relu,
             resnet.maxpool,
+            resnet.layer1,  # 3 blocks
         )
-        self.inf_specific_layer = copy.deepcopy(self.vis_specific_layer)
+        self.layer2 = resnet.layer2  # 4 blocks
+        if self.use_NL:
+            self.NL_2 = nn.ModuleList([Non_local(512) for i in range(2)])
 
-        self.shared_layer = nn.Sequential(
-            resnet.layer1,
-            resnet.layer2,
-            resnet.layer3,
-            resnet.layer4,
-        )
-
-    def forward(self, x_vis, x_inf, modal):
-        if modal == "all":
-            x_vis = self.vis_specific_layer(x_vis)
-            x_inf = self.inf_specific_layer(x_inf)
-            x = torch.cat([x_vis, x_inf], dim=0)
-        elif modal == "vis":
-            x_vis = self.vis_specific_layer(x_vis)
-            x = x_vis
-        elif modal == "inf":
-            x_inf = self.inf_specific_layer(x_inf)
-            x = x_inf
-
-        l4_out = self.shared_layer(x)
-
-        return l4_out
-
-
-class Non_local(nn.Module):
-    def __init__(self, in_channels, reduc_ratio=2):
-        super(Non_local, self).__init__()
-
-        self.in_channels = in_channels
-        self.inter_channels = reduc_ratio // reduc_ratio
-
-        self.g = nn.Sequential(
-            nn.Conv2d(in_channels=self.in_channels, out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0),
-        )
-
-        self.W = nn.Sequential(
-            nn.Conv2d(in_channels=self.inter_channels, out_channels=self.in_channels, kernel_size=1, stride=1, padding=0),
-            nn.BatchNorm2d(self.in_channels),
-        )
-        nn.init.constant_(self.W[1].weight, 0.0)
-        nn.init.constant_(self.W[1].bias, 0.0)
-
-        self.theta = nn.Conv2d(in_channels=self.in_channels, out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0)
-
-        self.phi = nn.Conv2d(in_channels=self.in_channels, out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0)
+    def _NL_forward_layer(self, x, layer, NL_modules):
+        num_blocks = len(layer)
+        nl_start_idx = num_blocks - len(NL_modules)  # 从倒数层开始插入
+        nl_counter = 0
+        for i, block in enumerate(layer):
+            x = block(x)
+            if i >= nl_start_idx:
+                x = NL_modules[nl_counter](x)
+                nl_counter += 1
+        return x
 
     def forward(self, x):
-        """
-        :param x: (b, c, t, h, w)
-        :return:
-        """
+        out = self.pre_processing_layer(x)
+        if self.use_NL:
+            out = self._NL_forward_layer(out, self.layer2, self.NL_2)
+        else:
+            out = self.layer2(out)
+        return out
 
-        batch_size = x.size(0)
-        g_x = self.g(x).view(batch_size, self.inter_channels, -1)
-        g_x = g_x.permute(0, 2, 1)
 
-        theta_x = self.theta(x).view(batch_size, self.inter_channels, -1)
-        theta_x = theta_x.permute(0, 2, 1)
-        phi_x = self.phi(x).view(batch_size, self.inter_channels, -1)
-        f = torch.matmul(theta_x, phi_x)
-        N = f.size(-1)
-        # f_div_C = torch.nn.functional.softmax(f, dim=-1)
-        f_div_C = f / N
+class Backbone_Decoupling_Module(nn.Module):
+    """layer3 layer4"""
 
-        y = torch.matmul(f_div_C, g_x)
-        y = y.permute(0, 2, 1).contiguous()
-        y = y.view(batch_size, self.inter_channels, *x.size()[2:])
-        W_y = self.W(y)
-        z = W_y + x
+    def __init__(self, resnet, use_NL=False):
+        super(Backbone_Decoupling_Module, self).__init__()
+        self.use_NL = use_NL
 
-        return z
+        self.layer3 = resnet.layer3  # 6 blocks
+        self.layer4 = resnet.layer4  # 3 blocks
+
+        if self.use_NL:
+            self.NL_3 = nn.ModuleList([Non_local(1024) for i in range(3)])
+
+    def _NL_forward_layer(self, x, layer, NL_modules):
+        num_blocks = len(layer)
+        nl_start_idx = num_blocks - len(NL_modules)  # 从倒数层开始插入
+        nl_counter = 0
+        for i, block in enumerate(layer):
+            x = block(x)
+            if i >= nl_start_idx:
+                x = NL_modules[nl_counter](x)
+                nl_counter += 1
+        return x
+
+    def forward(self, x):
+        if self.use_NL:
+            out = self._NL_forward_layer(x, self.layer3, self.NL_3)
+        else:
+            out = self.layer3(x)
+        out = self.layer4(out)
+        return out
