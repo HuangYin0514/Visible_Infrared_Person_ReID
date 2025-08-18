@@ -24,15 +24,15 @@ class ReIDNet(nn.Module):
         self.backbone_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
 
     def forward(self, x_vis, x_inf, modal):
-        shared_feature_map, specific_feature_map = self.backbone(x_vis, x_inf, modal)
+        resnet_feature_map = self.backbone(x_vis, x_inf, modal)
 
         if self.training:
-            return shared_feature_map, specific_feature_map
+            return resnet_feature_map
         else:
             eval_features = []
 
             # Backbone
-            backbone_features = self.backbone_pooling(shared_feature_map).squeeze()
+            backbone_features = self.backbone_pooling(resnet_feature_map).squeeze()
             backbone_bn_features, backbone_cls_score = self.backbone_classifier(backbone_features)
             eval_features.append(backbone_bn_features)
 
@@ -77,30 +77,82 @@ class Backbone(nn.Module):
         resnet.layer4[0].conv2.stride = (1, 1)
 
         # Backbone structure
-        self.low_shared_layer = nn.Sequential(
+        self.vis_specific_layer = nn.Sequential(
             resnet.conv1,
             resnet.bn1,
             resnet.relu,
             resnet.maxpool,
-            resnet.layer1,
-            resnet.layer2,
         )
+        self.inf_specific_layer = copy.deepcopy(self.vis_specific_layer)
 
         self.shared_layer = nn.Sequential(
+            resnet.layer1,
+            resnet.layer2,
             resnet.layer3,
             resnet.layer4,
         )
 
-        self.specific_layer = copy.deepcopy(self.shared_layer)
-
     def forward(self, x_vis, x_inf, modal):
         if modal == "all":
+            x_vis = self.vis_specific_layer(x_vis)
+            x_inf = self.inf_specific_layer(x_inf)
             x = torch.cat([x_vis, x_inf], dim=0)
         elif modal == "vis":
+            x_vis = self.vis_specific_layer(x_vis)
             x = x_vis
         elif modal == "inf":
+            x_inf = self.inf_specific_layer(x_inf)
             x = x_inf
-        outs = self.low_shared_layer(x)
-        shared_feature_map = self.shared_layer(outs)
-        specific_feature_map = self.specific_layer(outs)
-        return shared_feature_map, specific_feature_map
+
+        l4_out = self.shared_layer(x)
+
+        return l4_out
+
+
+class Non_local(nn.Module):
+    def __init__(self, in_channels, reduc_ratio=2):
+        super(Non_local, self).__init__()
+
+        self.in_channels = in_channels
+        self.inter_channels = reduc_ratio // reduc_ratio
+
+        self.g = nn.Sequential(
+            nn.Conv2d(in_channels=self.in_channels, out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0),
+        )
+
+        self.W = nn.Sequential(
+            nn.Conv2d(in_channels=self.inter_channels, out_channels=self.in_channels, kernel_size=1, stride=1, padding=0),
+            nn.BatchNorm2d(self.in_channels),
+        )
+        nn.init.constant_(self.W[1].weight, 0.0)
+        nn.init.constant_(self.W[1].bias, 0.0)
+
+        self.theta = nn.Conv2d(in_channels=self.in_channels, out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0)
+
+        self.phi = nn.Conv2d(in_channels=self.in_channels, out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0)
+
+    def forward(self, x):
+        """
+        :param x: (b, c, t, h, w)
+        :return:
+        """
+
+        batch_size = x.size(0)
+        g_x = self.g(x).view(batch_size, self.inter_channels, -1)
+        g_x = g_x.permute(0, 2, 1)
+
+        theta_x = self.theta(x).view(batch_size, self.inter_channels, -1)
+        theta_x = theta_x.permute(0, 2, 1)
+        phi_x = self.phi(x).view(batch_size, self.inter_channels, -1)
+        f = torch.matmul(theta_x, phi_x)
+        N = f.size(-1)
+        # f_div_C = torch.nn.functional.softmax(f, dim=-1)
+        f_div_C = f / N
+
+        y = torch.matmul(f_div_C, g_x)
+        y = y.permute(0, 2, 1).contiguous()
+        y = y.view(batch_size, self.inter_channels, *x.size()[2:])
+        W_y = self.W(y)
+        z = W_y + x
+
+        return z

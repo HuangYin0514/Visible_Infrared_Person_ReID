@@ -7,20 +7,19 @@ class Scheduler:
 
     def adjust_learning_rate(self, config, optimizer, epoch):
 
-        if epoch < config.SCHEDULER.MILESTONES[0]:
-            lr = config.OPTIMIZER.LEARNING_RATE * (epoch + 1) / 10
+        CONFIG_LR = config.OPTIMIZER.LEARNING_RATE
 
-        elif epoch >= config.SCHEDULER.MILESTONES[0] and epoch < config.SCHEDULER.MILESTONES[1]:
-            lr = config.OPTIMIZER.LEARNING_RATE * config.SCHEDULER.FACTORS[0]
+        if epoch < 10:
+            lr = CONFIG_LR * (epoch + 1) / 10
+        elif epoch >= 10 and epoch < 20:
+            lr = CONFIG_LR
+        elif epoch >= 20 and epoch < 50:
+            lr = CONFIG_LR * 0.1
+        elif epoch >= 50:
+            lr = CONFIG_LR * 0.01
 
-        elif epoch >= config.SCHEDULER.MILESTONES[1] and epoch < config.SCHEDULER.MILESTONES[2]:
-            lr = config.OPTIMIZER.LEARNING_RATE * config.SCHEDULER.FACTORS[1]
-
-        elif epoch >= config.SCHEDULER.MILESTONES[2]:
-            lr = config.OPTIMIZER.LEARNING_RATE * config.SCHEDULER.FACTORS[2]
-
-        optimizer.param_groups[0]["lr"] = 0.1 * lr  # backbone 网络
+        optimizer.param_groups[0]["lr"] = 0.1 * lr
         for i in range(len(optimizer.param_groups) - 1):
-            optimizer.param_groups[i + 1]["lr"] = lr  # 其余网络参数
+            optimizer.param_groups[i + 1]["lr"] = lr
 
         return lr

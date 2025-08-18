@@ -105,15 +105,19 @@ def run(config):
             if config.MODEL.MODULE == "Lucky":
                 total_loss = 0
 
-                vis_labels, inf_labels = vis_labels.to(DEVICE), inf_labels.to(DEVICE)
+                labels = torch.cat([vis_labels, inf_labels], 0).to(DEVICE)
                 vis_imgs, inf_imgs = vis_imgs.to(DEVICE), inf_imgs.to(DEVICE)
-                labels = torch.cat([vis_labels, inf_labels], 0)
+                # input = torch.cat([input1, input2], 0)
 
-                shared_feature_map, specific_feature_map = net(vis_imgs, inf_imgs, modal="all")
+                backbone_feature_map = net(vis_imgs, inf_imgs, modal="all")
+
+                # N_v = vis_labels.shape[0]
+                # N_i = inf_labels.shape[0]
+                # resnet_feature_map_vis, resnet_feature_map_inf = torch.split(backbone_feature_map, [N_v, N_i], dim=0)
 
                 # Backbone
-                backbone_feature = net.backbone_pooling(shared_feature_map).squeeze()
-                backbone_bn_feature, backbone_cls_score = net.backbone_classifier(backbone_feature)
+                backbone_feature = net.backbone_pooling(backbone_feature_map).squeeze()
+                backbone_bn_features, backbone_cls_score = net.backbone_classifier(backbone_feature)
                 backbone_pid_loss = criterion.id(backbone_cls_score, labels)
                 backbone_tri_loss = criterion.tri(backbone_feature, labels)[0]
                 total_loss += backbone_pid_loss + backbone_tri_loss
