@@ -22,6 +22,7 @@ class Optimizer:
         optimizer = optim.SGD(
             [
                 {"params": base_params, "lr": 0.1 * config.OPTIMIZER.LEARNING_RATE},
+                {"params": net.backbone_pooling.parameters(), "lr": config.OPTIMIZER.LEARNING_RATE},
                 {"params": net.backbone_classifier.parameters(), "lr": config.OPTIMIZER.LEARNING_RATE},
             ],
             weight_decay=5e-4,
