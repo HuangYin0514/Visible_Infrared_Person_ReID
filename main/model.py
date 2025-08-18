@@ -85,12 +85,24 @@ class Backbone(nn.Module):
         )
         self.inf_specific_layer = copy.deepcopy(self.vis_specific_layer)
 
-        self.shared_layer = nn.Sequential(
-            resnet.layer1,
-            resnet.layer2,
-            resnet.layer3,
-            resnet.layer4,
-        )
+        self.layer1 = resnet.layer1  # 3 blocks
+        self.layer2 = resnet.layer2  # 4 blocks
+        self.layer3 = resnet.layer3  # 6 blocks
+        self.layer4 = resnet.layer4  # 3 blocks
+
+        self.NL_2 = nn.ModuleList([Non_local(512) for i in range(2)])
+        self.NL_3 = nn.ModuleList([Non_local(1024) for i in range(3)])
+
+    def _NL_forward_layer(self, x, layer, NL_modules):
+        num_blocks = len(layer)
+        nl_start_idx = num_blocks - len(NL_modules)  # 从倒数层开始插入
+        nl_counter = 0
+        for i, block in enumerate(layer):
+            x = block(x)
+            if i >= nl_start_idx:
+                x = NL_modules[nl_counter](x)
+                nl_counter += 1
+        return x
 
     def forward(self, x_vis, x_inf, modal):
         if modal == "all":
@@ -104,55 +116,9 @@ class Backbone(nn.Module):
             x_inf = self.inf_specific_layer(x_inf)
             x = x_inf
 
-        l4_out = self.shared_layer(x)
+        out = self.layer1(x)
+        out = self._NL_forward_layer(out, self.layer2, self.NL_2)
+        out = self._NL_forward_layer(out, self.layer3, self.NL_3)
+        out = self.layer4(out)
 
-        return l4_out
-
-
-class Non_local(nn.Module):
-    def __init__(self, in_channels, reduc_ratio=2):
-        super(Non_local, self).__init__()
-
-        self.in_channels = in_channels
-        self.inter_channels = reduc_ratio // reduc_ratio
-
-        self.g = nn.Sequential(
-            nn.Conv2d(in_channels=self.in_channels, out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0),
-        )
-
-        self.W = nn.Sequential(
-            nn.Conv2d(in_channels=self.inter_channels, out_channels=self.in_channels, kernel_size=1, stride=1, padding=0),
-            nn.BatchNorm2d(self.in_channels),
-        )
-        nn.init.constant_(self.W[1].weight, 0.0)
-        nn.init.constant_(self.W[1].bias, 0.0)
-
-        self.theta = nn.Conv2d(in_channels=self.in_channels, out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0)
-
-        self.phi = nn.Conv2d(in_channels=self.in_channels, out_channels=self.inter_channels, kernel_size=1, stride=1, padding=0)
-
-    def forward(self, x):
-        """
-        :param x: (b, c, t, h, w)
-        :return:
-        """
-
-        batch_size = x.size(0)
-        g_x = self.g(x).view(batch_size, self.inter_channels, -1)
-        g_x = g_x.permute(0, 2, 1)
-
-        theta_x = self.theta(x).view(batch_size, self.inter_channels, -1)
-        theta_x = theta_x.permute(0, 2, 1)
-        phi_x = self.phi(x).view(batch_size, self.inter_channels, -1)
-        f = torch.matmul(theta_x, phi_x)
-        N = f.size(-1)
-        # f_div_C = torch.nn.functional.softmax(f, dim=-1)
-        f_div_C = f / N
-
-        y = torch.matmul(f_div_C, g_x)
-        y = y.permute(0, 2, 1).contiguous()
-        y = y.view(batch_size, self.inter_channels, *x.size()[2:])
-        W_y = self.W(y)
-        z = W_y + x
-
-        return z
+        return out
