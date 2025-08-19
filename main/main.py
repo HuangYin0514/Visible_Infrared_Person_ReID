@@ -168,10 +168,10 @@ def run(config):
                     specific_vis_feat_map, specific_inf_feat_map = torch.chunk(specific_feature_map, 2, dim=0)
                     modal_fusion_feat_map = net.modal_fusion(shared_vis_feat_map, shared_inf_feat_map, specific_vis_feat_map, specific_inf_feat_map)
                     # 池化
-                    modal_fusion_feat = net.modal_fusion_pooling(modal_fusion_feat_map)
+                    modal_fusion_feat = net.modal_fusion_pooling(modal_fusion_feat_map).squeeze()
                     # 分类
                     modal_fusion_bn_features, modal_fusion_cls_score = net.modal_fusion_classifier(modal_fusion_feat)
-                    assert torch.all(vis_labels == inf_labels)
+                    assert torch.all(vis_labels == inf_labels)  # 判断可见光和红外行人标签是否相同
                     modal_fusion_pid_loss = criterion.id(modal_fusion_cls_score, vis_labels)
                     modal_fusion_tri_loss = criterion.tri(modal_fusion_feat, vis_labels)[0]
                     total_loss += modal_fusion_pid_loss + modal_fusion_tri_loss
