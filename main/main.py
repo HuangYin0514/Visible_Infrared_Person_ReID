@@ -132,7 +132,7 @@ def run(config):
                 total_loss += specific_pid_loss + specific_tri_loss
 
                 MODAL_CLASSIFICATION_FLAG = True
-                if MODAL_CLASSIFICATION_FLAG and epoch > 10:
+                if MODAL_CLASSIFICATION_FLAG and epoch > 0:
                     MODAL_CLASSIFICATION_WITGTH = 0.1 / (1 + L_lt)
                     # 根据模态信息，将指定特征分为0，1类
                     dual_modal_label = torch.cat(
