@@ -107,15 +107,12 @@ def run(config):
                 total_loss = 0
                 batch_size = vis_imgs.size(0) * 2
 
-                labels = torch.cat([vis_labels, inf_labels], 0).to(DEVICE)
+                vis_labels, inf_labels = vis_labels.to(DEVICE), inf_labels.to(DEVICE)
+                labels = torch.cat([vis_labels, inf_labels], 0)
                 vis_imgs, inf_imgs = vis_imgs.to(DEVICE), inf_imgs.to(DEVICE)
                 # input = torch.cat([input1, input2], 0)
 
                 backbone_feature_map, specific_feature_map = net(vis_imgs, inf_imgs, modal="all")
-
-                # N_v = vis_labels.shape[0]
-                # N_i = inf_labels.shape[0]
-                # resnet_feature_map_vis, resnet_feature_map_inf = torch.split(backbone_feature_map, [N_v, N_i], dim=0)
 
                 # Backbone
                 backbone_feature = net.backbone_pooling(backbone_feature_map).squeeze()
@@ -131,6 +128,7 @@ def run(config):
                 specific_tri_loss = criterion.tri(specific_feature, labels)[0]
                 total_loss += specific_pid_loss + specific_tri_loss
 
+                # Modal classification
                 MODAL_CLASSIFICATION_FLAG = True
                 if MODAL_CLASSIFICATION_FLAG and epoch > 10:
                     MODAL_CLASSIFICATION_WITGTH = 0.1 / (1 + L_lt)
@@ -160,6 +158,18 @@ def run(config):
                     _, tri_modal_cls_score = net.tri_modal_classifier(torch.cat([specific_feature, backbone_feature], dim=0))
                     tri_modal_loss = criterion.id(tri_modal_cls_score, tri_modal_label)
                     total_loss += MODAL_CLASSIFICATION_WITGTH * tri_modal_loss
+
+                # Modal fusion
+                MODAL_FUSION_FLAG = True
+                if MODAL_FUSION_FLAG:
+                    shared_vis_feat, shared_inf_feat = torch.chunk(backbone_feature, 2, dim=0)
+                    specific_vis_feat, specific_inf_feat = torch.chunk(specific_feature, 2, dim=0)
+
+                    modal_fusion_feature = net.modal_fusion(shared_vis_feat, shared_inf_feat, specific_vis_feat, specific_inf_feat)
+                    modal_fusion_bn_features, modal_fusion_cls_score = net.modal_fusion_classifier(modal_fusion_feature)
+                    modal_fusion_pid_loss = criterion.id(modal_fusion_cls_score, vis_labels)
+                    modal_fusion_tri_loss = criterion.tri(modal_fusion_feature, vis_labels)[0]
+                    total_loss += modal_fusion_pid_loss + modal_fusion_tri_loss
 
                 optimizer.zero_grad()
                 total_loss.backward()
