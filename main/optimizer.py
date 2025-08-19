@@ -10,7 +10,7 @@ class Optimizer:
         ################################################################################
         special_modules = [
             net.backbone_classifier,
-            net.modal_confuser,
+            net.specific_classifier,
         ]
 
         # Ignored parameters

@@ -23,8 +23,12 @@ class ReIDNet(nn.Module):
         self.backbone_pooling = GeneralizedMeanPoolingP()
         self.backbone_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
 
-        # ------------- Confuser -----------------------
-        self.modal_confuser = Classifier(BACKBONE_FEATURES_DIM, 2)
+        # ------------- Specific -----------------------
+        self.specific_pooling = GeneralizedMeanPoolingP()
+        self.specific_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
+
+        # # ------------- Confuser -----------------------
+        # self.modal_confuser = Classifier(BACKBONE_FEATURES_DIM, 3)
 
     def forward(self, x_vis, x_inf, modal):
         backbone_feature_map, specific_feature_map = self.backbone(x_vis, x_inf, modal)
@@ -79,8 +83,8 @@ class Backbone(nn.Module):
         resnet.layer4[0].downsample[0].stride = (1, 1)
         resnet.layer4[0].conv2.stride = (1, 1)
 
-        self.backbone_encoder_module = Backbone_Encoder_Module(resnet, use_NL=True)
-        self.backbone_decoupling_module = Backbone_Decoupling_Module(resnet, use_NL=True)
+        self.backbone_encoder_module = Backbone_Encoder_Module(resnet, use_NL=False)
+        self.backbone_decoupling_module = Backbone_Decoupling_Module(resnet, use_NL=False)
 
         self.shared_module = self.backbone_decoupling_module
         self.specific_module = copy.deepcopy(self.backbone_decoupling_module)

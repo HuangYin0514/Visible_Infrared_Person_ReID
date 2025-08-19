@@ -123,13 +123,20 @@ def run(config):
                 backbone_tri_loss = criterion.tri(backbone_feature, labels)[0]
                 total_loss += backbone_pid_loss + backbone_tri_loss
 
-                # Confuser
-                modal_label = torch.cat([torch.zeros(batch_size // 2, dtype=torch.long), torch.ones(batch_size // 2, dtype=torch.long)])
-                idx = torch.randperm(batch_size)
-                modal_label = modal_label[idx].to(DEVICE)
-                bn_feature, modal_cls_score = net.modal_confuser(backbone_feature)
-                modal_loss = criterion.id(modal_cls_score, modal_label)
-                total_loss += modal_loss
+                # Specific
+                specific_feature = net.specific_pooling(specific_feature_map).squeeze()
+                specific_bn_features, specific_cls_score = net.specific_classifier(specific_feature)
+                specific_pid_loss = criterion.id(specific_cls_score, labels)
+                specific_tri_loss = criterion.tri(specific_feature, labels)[0]
+                total_loss += specific_pid_loss + specific_tri_loss
+
+                # # Confuser
+                # modal_label = torch.cat([torch.zeros(batch_size // 2, dtype=torch.long), torch.ones(batch_size // 2, dtype=torch.long)])
+                # idx = torch.randperm(batch_size)
+                # modal_label = modal_label[idx].to(DEVICE)
+                # bn_feature, modal_cls_score = net.modal_confuser(backbone_feature)
+                # modal_loss = criterion.id(modal_cls_score, modal_label)
+                # total_loss += modal_loss
 
                 optimizer.zero_grad()
                 total_loss.backward()
