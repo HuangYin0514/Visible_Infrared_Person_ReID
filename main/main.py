@@ -132,7 +132,7 @@ def run(config):
                 total_loss += specific_pid_loss + specific_tri_loss
 
                 MODAL_CLASSIFICATION_FLAG = True
-                if MODAL_CLASSIFICATION_FLAG and epoch > 0:
+                if MODAL_CLASSIFICATION_FLAG and epoch > 10:
                     MODAL_CLASSIFICATION_WITGTH = 0.1 / (1 + L_lt)
                     # 根据模态信息，将指定特征分为0，1类
                     dual_modal_label = torch.cat(
@@ -173,7 +173,7 @@ def run(config):
         #########
         # Test
         #########
-        if epoch % config.TEST.EVAL_EPOCH == 0:
+        if epoch % config.TEST.EVAL_EPOCH == 0 and epoch > 10:
             net.eval()
 
             query_feat = np.zeros((data_loder.N_query, 2048))
