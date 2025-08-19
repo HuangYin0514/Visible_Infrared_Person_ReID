@@ -11,6 +11,8 @@ class Optimizer:
         special_modules = [
             net.backbone_classifier,
             net.specific_classifier,
+            net.dual_modal_classifier,
+            net.tri_modal_classifier,
         ]
 
         # Ignored parameters

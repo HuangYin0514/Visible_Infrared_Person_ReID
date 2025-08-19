@@ -63,6 +63,7 @@ def run(config):
     print("==> Start Training...")
     # 初始化最佳指标
     best_epoch, best_mAP, best_rank1 = 0, 0, 0
+    L_lt = 0
     for epoch in range(0, config.OPTIMIZER.TOTAL_TRAIN_EPOCH):
         #########
         # data
@@ -130,19 +131,42 @@ def run(config):
                 specific_tri_loss = criterion.tri(specific_feature, labels)[0]
                 total_loss += specific_pid_loss + specific_tri_loss
 
-                # # Confuser
-                # modal_label = torch.cat([torch.zeros(batch_size // 2, dtype=torch.long), torch.ones(batch_size // 2, dtype=torch.long)])
-                # idx = torch.randperm(batch_size)
-                # modal_label = modal_label[idx].to(DEVICE)
-                # bn_feature, modal_cls_score = net.modal_confuser(backbone_feature)
-                # modal_loss = criterion.id(modal_cls_score, modal_label)
-                # total_loss += modal_loss
+                MODAL_CLASSIFICATION_FLAG = True
+                if MODAL_CLASSIFICATION_FLAG and epoch > 10:
+                    MODAL_CLASSIFICATION_WITGTH = 0.1 / (1 + L_lt)
+                    # 根据模态信息，将指定特征分为0，1类
+                    dual_modal_label = torch.cat(
+                        [
+                            torch.zeros(batch_size // 2, dtype=torch.long),
+                            torch.ones(batch_size // 2, dtype=torch.long),
+                        ],
+                        dim=0,
+                    )
+                    dual_modal_label = dual_modal_label.to(DEVICE)
+                    _, dual_modal_cls_score = net.dual_modal_classifier(specific_feature)
+                    dual_modal_loss = criterion.id(dual_modal_cls_score, dual_modal_label)
+                    total_loss += MODAL_CLASSIFICATION_WITGTH * dual_modal_loss
+
+                    # 将共享特征分类为第2类
+                    tri_modal_label = torch.cat(
+                        [
+                            torch.zeros(batch_size // 2, dtype=torch.long),
+                            torch.ones(batch_size // 2, dtype=torch.long),
+                            torch.full((batch_size,), 2, dtype=torch.long),
+                        ],
+                        dim=0,
+                    )
+                    tri_modal_label = tri_modal_label.to(DEVICE)
+                    _, tri_modal_cls_score = net.tri_modal_classifier(torch.cat([specific_feature, backbone_feature], dim=0))
+                    tri_modal_loss = criterion.id(tri_modal_cls_score, tri_modal_label)
+                    total_loss += MODAL_CLASSIFICATION_WITGTH * tri_modal_loss
 
                 optimizer.zero_grad()
                 total_loss.backward()
                 optimizer.step()
 
                 meter.update({"backbone_pid_loss": backbone_pid_loss.item()})
+        L_lt = meter.get_dict()["backbone_pid_loss"]
         logger("Time: {}; Epoch: {}; {}".format(util.time_now(), epoch, meter.get_str()))
         wandb.log({"Lr": optimizer.param_groups[0]["lr"], **meter.get_dict()})
 

@@ -27,8 +27,9 @@ class ReIDNet(nn.Module):
         self.specific_pooling = GeneralizedMeanPoolingP()
         self.specific_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
 
-        # # ------------- Confuser -----------------------
-        # self.modal_confuser = Classifier(BACKBONE_FEATURES_DIM, 3)
+        # # ------------- Modal classification -----------------------
+        self.dual_modal_classifier = Classifier(BACKBONE_FEATURES_DIM, 2)
+        self.tri_modal_classifier = Classifier(BACKBONE_FEATURES_DIM, 3)
 
     def forward(self, x_vis, x_inf, modal):
         backbone_feature_map, specific_feature_map = self.backbone(x_vis, x_inf, modal)
