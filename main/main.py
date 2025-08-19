@@ -131,7 +131,7 @@ def run(config):
                 specific_tri_loss = criterion.tri(specific_feature, labels)[0]
                 total_loss += specific_pid_loss + specific_tri_loss
 
-                MODAL_CLASSIFICATION_FLAG = False
+                MODAL_CLASSIFICATION_FLAG = True
                 if MODAL_CLASSIFICATION_FLAG and epoch > 0:
                     MODAL_CLASSIFICATION_WITGTH = 0.1 / (1 + L_lt)
                     # 根据模态信息，将指定特征分为0，1类
