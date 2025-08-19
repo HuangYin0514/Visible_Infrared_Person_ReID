@@ -32,7 +32,8 @@ class ReIDNet(nn.Module):
         self.tri_modal_classifier = Classifier(BACKBONE_FEATURES_DIM, 3)
 
         # ------------- Modal Fusion -----------------------
-        self.modal_fusion = Modal_Fusion(BACKBONE_FEATURES_DIM * 3, BACKBONE_FEATURES_DIM)
+        self.modal_fusion_pooling = GeneralizedMeanPoolingP()
+        self.modal_fusion = Modal_Fusion(BACKBONE_FEATURES_DIM * 4, BACKBONE_FEATURES_DIM)
         self.modal_fusion_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
 
     def forward(self, x_vis, x_inf, modal):
@@ -184,15 +185,14 @@ class Modal_Fusion(nn.Module):
     def __init__(self, input_dim, out_dim):
         super(Modal_Fusion, self).__init__()
         self.fusion = nn.Sequential(
-            nn.Conv1d(input_dim, out_dim, 1, 1, 0, bias=False),
-            nn.BatchNorm1d(out_dim),
+            nn.Conv2d(input_dim, out_dim, 1, 1, 0, bias=False),
+            nn.BatchNorm2d(out_dim),
             nn.ReLU(),
         )
 
         self.fusion.apply(weights_init_kaiming)
 
     def forward(self, shared_vis_feat, shared_inf_feat, specific_vis_feat, specific_inf_feat):
-        shared_feat = shared_vis_feat + shared_inf_feat
-        feat = torch.cat([shared_feat, specific_vis_feat, specific_inf_feat], dim=1).unsqueeze(2)
-        fused_feat = self.fusion(feat).squeeze(2) + shared_feat
+        feat = torch.cat([shared_vis_feat, shared_inf_feat, specific_vis_feat, specific_inf_feat], dim=1)
+        fused_feat = self.fusion(feat)
         return fused_feat

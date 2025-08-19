@@ -162,13 +162,18 @@ def run(config):
                 # Modal fusion
                 MODAL_FUSION_FLAG = True
                 if MODAL_FUSION_FLAG:
-                    shared_vis_feat, shared_inf_feat = torch.chunk(backbone_feature, 2, dim=0)
-                    specific_vis_feat, specific_inf_feat = torch.chunk(specific_feature, 2, dim=0)
-
-                    modal_fusion_feature = net.modal_fusion(shared_vis_feat, shared_inf_feat, specific_vis_feat, specific_inf_feat)
-                    modal_fusion_bn_features, modal_fusion_cls_score = net.modal_fusion_classifier(modal_fusion_feature)
+                    # 先特征图融合，再pooling，再分类
+                    # 特征图融合
+                    shared_vis_feat_map, shared_inf_feat_map = torch.chunk(backbone_feature_map, 2, dim=0)
+                    specific_vis_feat_map, specific_inf_feat_map = torch.chunk(specific_feature_map, 2, dim=0)
+                    modal_fusion_feat_map = net.modal_fusion(shared_vis_feat_map, shared_inf_feat_map, specific_vis_feat_map, specific_inf_feat_map)
+                    # 池化
+                    modal_fusion_feat = net.modal_fusion_pooling(modal_fusion_feat_map)
+                    # 分类
+                    modal_fusion_bn_features, modal_fusion_cls_score = net.modal_fusion_classifier(modal_fusion_feat)
+                    assert torch.all(vis_labels == inf_labels)
                     modal_fusion_pid_loss = criterion.id(modal_fusion_cls_score, vis_labels)
-                    modal_fusion_tri_loss = criterion.tri(modal_fusion_feature, vis_labels)[0]
+                    modal_fusion_tri_loss = criterion.tri(modal_fusion_feat, vis_labels)[0]
                     total_loss += modal_fusion_pid_loss + modal_fusion_tri_loss
 
                 optimizer.zero_grad()
