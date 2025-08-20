@@ -13,7 +13,6 @@ class Optimizer:
             net.specific_classifier,
             net.dual_modal_classifier,
             net.tri_modal_classifier,
-            net.modal_fusion,
             net.modal_fusion_classifier,
         ]
 

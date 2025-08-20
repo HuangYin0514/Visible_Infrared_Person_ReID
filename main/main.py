@@ -162,7 +162,7 @@ def run(config):
                 # Modal fusion
                 MODAL_FUSION_FLAG = True
                 if MODAL_FUSION_FLAG:
-                    # 先特征图融合，再pooling，再分类
+                    # 特征图融合，pooling，分类
                     # 特征图融合
                     shared_vis_feat_map, shared_inf_feat_map = torch.chunk(backbone_feature_map, 2, dim=0)
                     specific_vis_feat_map, specific_inf_feat_map = torch.chunk(specific_feature_map, 2, dim=0)
