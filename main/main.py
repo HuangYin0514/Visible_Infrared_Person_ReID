@@ -132,7 +132,7 @@ def run(config):
         #########
         # Test
         #########
-        if epoch % config.TEST.EVAL_EPOCH == 0 and epoch > 10:
+        if epoch % config.TEST.EVAL_EPOCH == 0:
             net.eval()
 
             query_feat = np.zeros((data_loder.N_query, 2048))
