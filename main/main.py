@@ -110,9 +110,8 @@ def run(config):
                 vis_labels, inf_labels = vis_labels.to(DEVICE), inf_labels.to(DEVICE)
                 labels = torch.cat([vis_labels, inf_labels], 0)
                 vis_imgs, inf_imgs = vis_imgs.to(DEVICE), inf_imgs.to(DEVICE)
-                # input = torch.cat([input1, input2], 0)
 
-                backbone_feature_map, specific_feature_map = net(vis_imgs, inf_imgs, modal="all")
+                backbone_feature_map = net(vis_imgs, inf_imgs, modal="all")
 
                 # Backbone
                 backbone_feature = net.backbone_pooling(backbone_feature_map).squeeze()
@@ -120,61 +119,6 @@ def run(config):
                 backbone_pid_loss = criterion.id(backbone_cls_score, labels)
                 backbone_tri_loss = criterion.tri(backbone_feature, labels)[0]
                 total_loss += backbone_pid_loss + backbone_tri_loss
-
-                # Specific
-                specific_feature = net.specific_pooling(specific_feature_map).squeeze()
-                specific_bn_features, specific_cls_score = net.specific_classifier(specific_feature)
-                specific_pid_loss = criterion.id(specific_cls_score, labels)
-                specific_tri_loss = criterion.tri(specific_feature, labels)[0]
-                total_loss += specific_pid_loss + specific_tri_loss
-
-                # Modal classification
-                MODAL_CLASSIFICATION_FLAG = True
-                if MODAL_CLASSIFICATION_FLAG and epoch > 10:
-                    MODAL_CLASSIFICATION_WITGTH = 0.1 / (1 + L_lt)
-                    # 根据模态信息，将指定特征分为0，1类
-                    dual_modal_label = torch.cat(
-                        [
-                            torch.zeros(batch_size // 2, dtype=torch.long),
-                            torch.ones(batch_size // 2, dtype=torch.long),
-                        ],
-                        dim=0,
-                    )
-                    dual_modal_label = dual_modal_label.to(DEVICE)
-                    _, dual_modal_cls_score = net.dual_modal_classifier(specific_feature)
-                    dual_modal_loss = criterion.id(dual_modal_cls_score, dual_modal_label)
-                    total_loss += MODAL_CLASSIFICATION_WITGTH * dual_modal_loss
-
-                    # 将共享特征分类为第2类
-                    tri_modal_label = torch.cat(
-                        [
-                            torch.zeros(batch_size // 2, dtype=torch.long),
-                            torch.ones(batch_size // 2, dtype=torch.long),
-                            torch.full((batch_size,), 2, dtype=torch.long),
-                        ],
-                        dim=0,
-                    )
-                    tri_modal_label = tri_modal_label.to(DEVICE)
-                    _, tri_modal_cls_score = net.tri_modal_classifier(torch.cat([specific_feature, backbone_feature], dim=0))
-                    tri_modal_loss = criterion.id(tri_modal_cls_score, tri_modal_label)
-                    total_loss += MODAL_CLASSIFICATION_WITGTH * tri_modal_loss
-
-                # Modal fusion
-                MODAL_FUSION_FLAG = True
-                if MODAL_FUSION_FLAG:
-                    # 特征图融合，pooling，分类
-                    # 特征图融合
-                    shared_vis_feat_map, shared_inf_feat_map = torch.chunk(backbone_feature_map, 2, dim=0)
-                    specific_vis_feat_map, specific_inf_feat_map = torch.chunk(specific_feature_map, 2, dim=0)
-                    modal_fusion_feat_map = net.modal_fusion(shared_vis_feat_map, shared_inf_feat_map, specific_vis_feat_map, specific_inf_feat_map)
-                    # 池化
-                    modal_fusion_feat = net.modal_fusion_pooling(modal_fusion_feat_map).squeeze()
-                    # 分类
-                    modal_fusion_bn_features, modal_fusion_cls_score = net.modal_fusion_classifier(modal_fusion_feat)
-                    assert torch.all(vis_labels == inf_labels)  # 判断可见光和红外行人标签是否相同
-                    modal_fusion_pid_loss = criterion.id(modal_fusion_cls_score, vis_labels)
-                    modal_fusion_tri_loss = criterion.tri(modal_fusion_feat, vis_labels)[0]
-                    total_loss += modal_fusion_pid_loss + modal_fusion_tri_loss
 
                 optimizer.zero_grad()
                 total_loss.backward()
