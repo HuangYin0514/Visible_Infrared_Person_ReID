@@ -121,8 +121,11 @@ def run(config):
                 total_loss += backbone_pid_loss + backbone_tri_loss
 
                 # Memory bank
-                memory_loss = 0.3 * net.memoryBank(backbone_bn_features, labels)
-                total_loss += memory_loss
+                USE_MEMORY_BANK = True
+                if USE_MEMORY_BANK:
+                    re_mask = torch.rand_like(backbone_bn_features) > 0.7  # 0.7 的概率为 False -> 被置 0
+                    memory_loss = 0.3 * net.memoryBank(backbone_bn_features * re_mask, labels)
+                    total_loss += memory_loss
 
                 optimizer.zero_grad()
                 total_loss.backward()
