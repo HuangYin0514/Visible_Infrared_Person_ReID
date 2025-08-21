@@ -23,10 +23,6 @@ class ReIDNet(nn.Module):
         self.backbone_pooling = GeneralizedMeanPoolingP()
         self.backbone_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
 
-        # ------------- Specific -----------------------
-        self.specific_pooling = GeneralizedMeanPoolingP()
-        self.specific_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
-
     def forward(self, x_vis, x_inf, modal):
         backbone_feature_map = self.backbone(x_vis, x_inf, modal)
 

@@ -125,7 +125,6 @@ def run(config):
                 optimizer.step()
 
                 meter.update({"backbone_pid_loss": backbone_pid_loss.item()})
-        L_lt = meter.get_dict()["backbone_pid_loss"]
         logger("Time: {}; Epoch: {}; {}".format(util.time_now(), epoch, meter.get_str()))
         wandb.log({"Lr": optimizer.param_groups[0]["lr"], **meter.get_dict()})
 
