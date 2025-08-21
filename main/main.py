@@ -120,9 +120,15 @@ def run(config):
                 backbone_tri_loss = criterion.tri(backbone_feature, labels)[0]
                 total_loss += backbone_pid_loss + backbone_tri_loss
 
+                # Memory bank
+                memory_loss = 0.3 * net.memoryBank(backbone_bn_features, labels)
+                total_loss += memory_loss
+
                 optimizer.zero_grad()
                 total_loss.backward()
                 optimizer.step()
+
+                net.memoryBank.updateMemory(backbone_bn_features, labels)
 
                 meter.update({"backbone_pid_loss": backbone_pid_loss.item()})
         logger("Time: {}; Epoch: {}; {}".format(util.time_now(), epoch, meter.get_str()))
