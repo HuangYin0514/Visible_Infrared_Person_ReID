@@ -10,6 +10,7 @@ class Optimizer:
         ################################################################################
         special_modules = [
             net.backbone_classifier,
+            net.memoryBank,
         ]
 
         # Ignored parameters
