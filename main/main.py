@@ -125,7 +125,7 @@ def run(config):
                 if USE_MEMORY_BANK:
                     memory_feat = net.memoryBank.features_memory[labels].detach()
                     memory_loss = torch.norm((backbone_bn_features - memory_feat), p=2)
-                    total_loss += 0.1 * memory_loss
+                    total_loss += 0.1 * 1 / batch_size * memory_loss
 
                 optimizer.zero_grad()
                 total_loss.backward()
