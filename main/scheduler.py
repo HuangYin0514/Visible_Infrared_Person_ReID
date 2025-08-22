@@ -10,13 +10,40 @@ class Scheduler:
         self.load_scheduler(config, optimizer)
 
     def load_scheduler(self, config, optimizer):
-        self.lr_scheduler = WarmupMultiStepLR(
-            optimizer,
-            config.SCHEDULER.MILESTONES,
-            gamma=0.1,
-            warmup_factor=0.01,
-            warmup_iters=10,
-        )
+        if config.SCHEDULER.NAME == "WarmupMultiStepLR":
+            self.lr_scheduler = WarmupMultiStepLR(
+                optimizer,
+                [40, 70],
+                gamma=0.1,
+                warmup_factor=0.01,
+                warmup_iters=10,
+            )
+        elif config.SCHEDULER.NAME == "Adjust_Learning_Rate":
+            self.lr_scheduler = Adjust_Learning_Rate(config, optimizer)
+
+
+class Adjust_Learning_Rate:
+    def __init__(self, config, optimizer):
+        self.config = config
+        self.optimizer = optimizer
+
+    def step(self, epoch):
+        CONFIG_LR = self.config.OPTIMIZER.LEARNING_RATE
+
+        if epoch < 10:
+            lr = CONFIG_LR * (epoch + 1) / 10
+        elif epoch >= 10 and epoch < 20:
+            lr = CONFIG_LR
+        elif epoch >= 20 and epoch < 50:
+            lr = CONFIG_LR * 0.1
+        elif epoch >= 50:
+            lr = CONFIG_LR * 0.01
+
+        self.optimizer.param_groups[0]["lr"] = 0.1 * lr
+        for i in range(len(self.optimizer.param_groups) - 1):
+            self.optimizer.param_groups[i + 1]["lr"] = lr
+
+        return lr
 
 
 class WarmupMultiStepLR(torch.optim.lr_scheduler._LRScheduler):

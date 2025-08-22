@@ -94,13 +94,6 @@ class Backbone(nn.Module):
         self.NL_2 = nn.ModuleList([Non_local(512) for i in range(2)])
         self.NL_3 = nn.ModuleList([Non_local(1024) for i in range(3)])
 
-        self.CIE_FALG = False
-        if self.CIE_FALG:
-            self.cie_1 = CIE(256)
-            self.cie_2 = CIE(512)
-            self.cie_3 = CIE(1024)
-            self.cie_4 = CIE(2048)
-
     def _NL_forward_layer(self, x, layer, NL_modules):
         num_blocks = len(layer)
         nl_start_idx = num_blocks - len(NL_modules)  # 从倒数层开始插入
@@ -125,23 +118,8 @@ class Backbone(nn.Module):
             x = x_inf
 
         out = self.layer1(x)
-        if self.training and self.CIE_FALG:
-            out_1, out_2 = torch.chunk(out, 2, dim=0)
-            out_fusion, out_1, out_2 = self.cie_1(out_1, out_2)
-            out = torch.cat([out_1, out_2], dim=0)
-
         out = self._NL_forward_layer(out, self.layer2, self.NL_2)
-        if self.training and self.CIE_FALG:
-            out_1, out_2 = torch.chunk(out, 2, dim=0)
-            out_fusion, out_1, out_2 = self.cie_2(out_1, out_2)
-            out = torch.cat([out_1, out_2], dim=0)
-
         out = self._NL_forward_layer(out, self.layer3, self.NL_3)
-        if self.training and self.CIE_FALG:
-            out_1, out_2 = torch.chunk(out, 2, dim=0)
-            out_fusion, out_1, out_2 = self.cie_3(out_1, out_2)
-            out = torch.cat([out_1, out_2], dim=0)
-
         out = self.layer4(out)
 
         return out
