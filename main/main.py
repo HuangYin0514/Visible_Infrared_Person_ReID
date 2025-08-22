@@ -123,9 +123,9 @@ def run(config):
                 # Memory bank
                 USE_MEMORY_BANK = True
                 if USE_MEMORY_BANK:
-                    memory_feat = 0.1 * net.memoryBank.features_memory[labels].detach()
+                    memory_feat = net.memoryBank.features_memory[labels]
                     memory_loss = torch.norm((backbone_bn_features - memory_feat), p=2)
-                    total_loss += memory_loss
+                    total_loss += 0.1 * memory_loss
 
                 optimizer.zero_grad()
                 total_loss.backward()
@@ -135,7 +135,13 @@ def run(config):
                     re_mask = torch.rand_like(backbone_bn_features) > 0.7  # 0.7 的概率为 False -> 被置 0
                     net.memoryBank.updateMemory(backbone_bn_features * re_mask, labels)
 
-                meter.update({"backbone_pid_loss": backbone_pid_loss.item()})
+                meter.update(
+                    {
+                        "backbone_pid_loss": backbone_pid_loss.item(),
+                        "backbone_tri_loss": backbone_tri_loss.item(),
+                        "memory_loss": memory_loss.item(),
+                    }
+                )
         logger("Time: {}; Epoch: {}; {}".format(util.time_now(), epoch, meter.get_str()))
         wandb.log({"Lr": optimizer.param_groups[0]["lr"], **meter.get_dict()})
 
