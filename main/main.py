@@ -4,6 +4,7 @@ import warnings
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 import torch.utils.data as data
 import util
 from criterion import Criterion
@@ -63,7 +64,6 @@ def run(config):
     print("==> Start Training...")
     # 初始化最佳指标
     best_epoch, best_mAP, best_rank1 = 0, 0, 0
-    L_lt = 0
     for epoch in range(0, config.OPTIMIZER.TOTAL_TRAIN_EPOCH):
         #########
         # data
@@ -111,37 +111,54 @@ def run(config):
                 labels = torch.cat([vis_labels, inf_labels], 0)
                 vis_imgs, inf_imgs = vis_imgs.to(DEVICE), inf_imgs.to(DEVICE)
 
-                backbone_feature_map = net(vis_imgs, inf_imgs, modal="all")
+                backbone_feat_map = net(vis_imgs, inf_imgs, modal="all")
 
                 # Backbone
-                backbone_feature = net.backbone_pooling(backbone_feature_map).squeeze()
-                backbone_bn_features, backbone_cls_score = net.backbone_classifier(backbone_feature)
+                backbone_feat = net.backbone_pooling(backbone_feat_map).squeeze()
+                backbone_bn_feat, backbone_cls_score = net.backbone_classifier(backbone_feat)
                 backbone_pid_loss = criterion.id(backbone_cls_score, labels)
-                backbone_tri_loss = criterion.tri(backbone_feature, labels)[0]
+                backbone_tri_loss = criterion.tri(backbone_feat, labels)[0]
                 total_loss += backbone_pid_loss + backbone_tri_loss
+                meter.update(
+                    {
+                        "backbone_pid_loss": backbone_pid_loss.item(),
+                        "backbone_tri_loss": backbone_tri_loss.item(),
+                    }
+                )
 
                 # Memory bank
                 USE_MEMORY_BANK = True
                 if USE_MEMORY_BANK:
                     memory_feat = net.memoryBank.features_memory[labels].detach()
-                    memory_loss = torch.norm((backbone_bn_features - memory_feat), p=2)
-                    total_loss += 0.1 * 1 / batch_size * memory_loss
+                    # memory_loss = torch.norm((backbone_bn_feat - memory_feat), p=2)
+                    # 余弦蒸馏损失
+                    student_norm = F.normalize(backbone_bn_feat, p=2, dim=1)
+                    teacher_norm = F.normalize(memory_feat, p=2, dim=1)
+                    cos_sim = (student_norm * teacher_norm).sum(dim=1).mean(0)
+                    memory_loss = -cos_sim
+                    total_loss += 0.1 * memory_loss
+                    meter.update(
+                        {
+                            "memory_loss": memory_loss.item(),
+                        }
+                    )
 
                 optimizer.zero_grad()
                 total_loss.backward()
                 optimizer.step()
 
                 if USE_MEMORY_BANK:
-                    re_mask = torch.rand_like(backbone_bn_features) > 0.7  # 0.7 的概率为 False -> 被置 0
-                    net.memoryBank.updateMemory(backbone_bn_features * re_mask, labels)
+                    unique_labels = labels.unique()
+                    num_unique_labels = len(unique_labels)
+                    fused_feat = torch.zeros(num_unique_labels, 2048).to(DEVICE)
+                    for i, cls in enumerate(unique_labels):
+                        mask = labels == cls
+                        cls_feat = backbone_bn_feat[mask]  # shape: (num_cls_samples, 2048)
+                        cls_weight = backbone_cls_score[mask, cls].unsqueeze(1)  # shape: (num_cls_samples, 1)
+                        fused_feat[i] = (cls_feat * cls_weight).sum(dim=0) / cls_weight.sum()
+                    re_mask = torch.rand_like(fused_feat) > 0.7  # 0.7 的概率为 False -> 被置 0
+                    net.memoryBank.updateMemory(fused_feat * re_mask, labels)
 
-                meter.update(
-                    {
-                        "backbone_pid_loss": backbone_pid_loss.item(),
-                        "backbone_tri_loss": backbone_tri_loss.item(),
-                        "memory_loss": memory_loss.item(),
-                    }
-                )
         logger("Time: {}; Epoch: {}; {}".format(util.time_now(), epoch, meter.get_str()))
         wandb.log({"Lr": optimizer.param_groups[0]["lr"], **meter.get_dict()})
 
@@ -165,15 +182,15 @@ def run(config):
                         batch_num = imgs.size(0)
                         imgs = imgs.to(DEVICE)
 
-                        bn_features = net(imgs, imgs, modal)
+                        bn_feat = net(imgs, imgs, modal)
                         flip_imgs = torch.flip(imgs, [3])
-                        flip_bn_features = net(flip_imgs, flip_imgs, modal)
-                        bn_features = bn_features + flip_bn_features
+                        flip_bn_feat = net(flip_imgs, flip_imgs, modal)
+                        bn_feat = bn_feat + flip_bn_feat
 
                         if loader_id == 0:
-                            query_feat[ptr : ptr + batch_num, :] = bn_features.detach().cpu().numpy()
+                            query_feat[ptr : ptr + batch_num, :] = bn_feat.detach().cpu().numpy()
                         elif loader_id == 1:
-                            gall_feat[ptr : ptr + batch_num, :] = bn_features.detach().cpu().numpy()
+                            gall_feat[ptr : ptr + batch_num, :] = bn_feat.detach().cpu().numpy()
 
                         ptr = ptr + batch_num
 
