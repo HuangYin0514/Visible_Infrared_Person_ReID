@@ -123,14 +123,14 @@ def run(config):
                 # Memory bank
                 USE_MEMORY_BANK = True
                 if USE_MEMORY_BANK:
-                    memory_loss = 0.3 * net.memoryBank(backbone_bn_features, labels)
+                    memory_feat = 0.1 * net.memoryBank.features_memory[labels].detach()
+                    memory_loss = torch.norm((backbone_bn_features - memory_feat), p=2)
                     total_loss += memory_loss
 
                 optimizer.zero_grad()
                 total_loss.backward()
                 optimizer.step()
 
-                USE_MEMORY_BANK = True
                 if USE_MEMORY_BANK:
                     re_mask = torch.rand_like(backbone_bn_features) > 0.7  # 0.7 的概率为 False -> 被置 0
                     net.memoryBank.updateMemory(backbone_bn_features * re_mask, labels)
