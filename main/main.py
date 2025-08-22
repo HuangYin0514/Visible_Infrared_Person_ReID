@@ -123,15 +123,17 @@ def run(config):
                 # Memory bank
                 USE_MEMORY_BANK = True
                 if USE_MEMORY_BANK:
-                    re_mask = torch.rand_like(backbone_bn_features) > 0.7  # 0.7 的概率为 False -> 被置 0
-                    memory_loss = 0.3 * net.memoryBank(backbone_bn_features * re_mask, labels)
+                    memory_loss = 0.3 * net.memoryBank(backbone_bn_features, labels)
                     total_loss += memory_loss
 
                 optimizer.zero_grad()
                 total_loss.backward()
                 optimizer.step()
 
-                net.memoryBank.updateMemory(backbone_bn_features, labels)
+                USE_MEMORY_BANK = True
+                if USE_MEMORY_BANK:
+                    re_mask = torch.rand_like(backbone_bn_features) > 0.7  # 0.7 的概率为 False -> 被置 0
+                    net.memoryBank.updateMemory(backbone_bn_features * re_mask, labels)
 
                 meter.update({"backbone_pid_loss": backbone_pid_loss.item()})
         logger("Time: {}; Epoch: {}; {}".format(util.time_now(), epoch, meter.get_str()))
