@@ -14,10 +14,10 @@ IR_CAMERAS = ["cam3", "cam6"]
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_path", type=str, default="/Users/drhy/Documents/projects/Visible_Infrared_Person_ReID/_dataset_processing/SYSU_MM01")
-    parser.add_argument("--output_path", type=str, default="/Users/drhy/Documents/projects/Visible_Infrared_Person_ReID/_dataset_processing/SYSU_MM01")
-    # parser.add_argument("--data_path", type=str, default="/Users/drhy/Documents/projects/Visible_Infrared_Person_ReID/_dataset_processing/SYSU_MM01_concise")
-    # parser.add_argument("--output_path", type=str, default="/Users/drhy/Documents/projects/Visible_Infrared_Person_ReID/_dataset_processing/SYSU_MM01_concise")
+    # parser.add_argument("--data_path", type=str, default="/Users/drhy/Documents/projects/Visible_Infrared_Person_ReID/_dataset_processing/SYSU_MM01")
+    # parser.add_argument("--output_path", type=str, default="/Users/drhy/Documents/projects/Visible_Infrared_Person_ReID/_dataset_processing/SYSU_MM01")
+    parser.add_argument("--data_path", type=str, default="/Users/drhy/Documents/projects/Visible_Infrared_Person_ReID/_dataset_processing/SYSU_MM01_concise")
+    parser.add_argument("--output_path", type=str, default="/Users/drhy/Documents/projects/Visible_Infrared_Person_ReID/_dataset_processing/SYSU_MM01_concise")
     args = parser.parse_args()
     return args
 

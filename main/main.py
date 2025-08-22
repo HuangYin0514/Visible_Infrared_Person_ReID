@@ -126,39 +126,9 @@ def run(config):
                     }
                 )
 
-                # Memory bank
-                USE_MEMORY_BANK = True
-                if USE_MEMORY_BANK:
-                    memory_feat = net.memoryBank.features_memory[labels].detach()
-                    # memory_loss = torch.norm((backbone_bn_feat - memory_feat), p=2)
-                    # 余弦蒸馏损失
-                    student_norm = F.normalize(backbone_bn_feat, p=2, dim=1)
-                    teacher_norm = F.normalize(memory_feat, p=2, dim=1)
-                    cos_sim = (student_norm * teacher_norm).sum(dim=1).mean(0)
-                    memory_loss = -cos_sim
-                    total_loss += 1 * memory_loss
-                    meter.update(
-                        {
-                            "memory_loss": memory_loss.item(),
-                        }
-                    )
-
                 optimizer.zero_grad()
                 total_loss.backward()
                 optimizer.step()
-
-                if USE_MEMORY_BANK:
-                    unique_labels = labels.unique()
-                    num_unique_labels = len(unique_labels)
-                    fused_feat = torch.zeros(num_unique_labels, 2048).to(DEVICE)
-                    for i, cls in enumerate(unique_labels):
-                        mask = labels == cls
-                        cls_feat = backbone_bn_feat[mask]  # shape: (num_cls_samples, 2048)
-                        select_cls_weight = backbone_cls_score[mask, cls].unsqueeze(1)  # shape: (num_cls_samples, 1)
-                        cls_weight = torch.softmax(select_cls_weight, dim=0).clone().detach()
-                        fused_feat[i] = (cls_feat * cls_weight).sum(dim=0) / cls_weight.sum()
-                    re_mask = torch.rand_like(fused_feat) > 0.7  # 0.7 的概率为 False -> 被置 0
-                    net.memoryBank.updateMemory(fused_feat * re_mask, labels)
 
         logger("Time: {}; Epoch: {}; {}".format(util.time_now(), epoch, meter.get_str()))
         wandb.log({"Lr": optimizer.param_groups[0]["lr"], **meter.get_dict()})

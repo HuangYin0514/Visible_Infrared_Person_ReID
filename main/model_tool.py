@@ -1,9 +1,44 @@
 import torch
 import torch.nn as nn
 
+
 #############################################################
+class CIE(nn.Module):
+    """
+    https://github.com/RanwanWu/HINet/blob/main/Models/HINet.py
+    Cross-modal hierarchical interaction network for RGB-D salient object detection
+    """
+
+    def __init__(self, in_channel):
+        super(CIE, self).__init__()
+        self.conv = nn.Conv2d(in_channel, in_channel, kernel_size=3, stride=1, padding=1)
+        self.bn = nn.BatchNorm2d(in_channel)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=2)
+        self.upsample = nn.Upsample(scale_factor=2, mode="bilinear", align_corners=True)
+
+    def forward(self, f1, f2):
+
+        f = f1 * f2
+
+        # middle
+        f = self.relu(self.bn(self.conv(f)))
+        f = self.maxpool(self.upsample(f))
+
+        # up
+        f1 = f + f1
+        f1 = self.maxpool(self.upsample(f1))
+
+        # down
+        f2 = f + f2
+        f2 = self.maxpool(self.upsample(f2))
+
+        f = f1 + f2
+
+        return f, f1, f2
 
 
+#############################################################
 class Residual(nn.Module):
     """
     残差模块类，用于实现残差连接。

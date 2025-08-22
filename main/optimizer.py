@@ -10,6 +10,10 @@ class Optimizer:
         ################################################################################
         special_modules = [
             net.backbone_classifier,
+            net.backbone.cie_1,
+            net.backbone.cie_2,
+            net.backbone.cie_3,
+            net.backbone.cie_4,
         ]
 
         # Ignored parameters
