@@ -94,7 +94,7 @@ class Backbone(nn.Module):
         self.NL_2 = nn.ModuleList([Non_local(512) for i in range(2)])
         self.NL_3 = nn.ModuleList([Non_local(1024) for i in range(3)])
 
-        self.CIE_FALG = True
+        self.CIE_FALG = False
         if self.CIE_FALG:
             self.cie_1 = CIE(256)
             self.cie_2 = CIE(512)
