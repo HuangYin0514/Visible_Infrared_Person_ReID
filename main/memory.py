@@ -14,7 +14,7 @@ class MemoryBank(nn.Module):
         self.temperature = temperature
 
         # 初始化样本记忆
-        self.features_memory = nn.Parameter(torch.randn(num_classes, num_features))
+        self.features_memory = nn.Parameter(torch.zeros(num_classes, num_features))
 
     def updateMemory(self, inputs, targets):
         with torch.no_grad():
