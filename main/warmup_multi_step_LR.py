@@ -1,22 +1,6 @@
 from bisect import bisect_right
 
 import torch
-import torch.optim as optim
-
-
-class Scheduler:
-    def __init__(self, config, optimizer):
-        self.name = "Scheduler"
-        self.load_scheduler(config, optimizer)
-
-    def load_scheduler(self, config, optimizer):
-        self.lr_scheduler = WarmupMultiStepLR(
-            optimizer,
-            config.SCHEDULER.MILESTONES,
-            gamma=0.1,
-            warmup_factor=0.01,
-            warmup_iters=10,
-        )
 
 
 class WarmupMultiStepLR(torch.optim.lr_scheduler._LRScheduler):

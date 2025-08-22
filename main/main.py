@@ -57,7 +57,7 @@ def run(config):
 
     ######################################################################
     # Scheduler
-    scheduler = Scheduler()
+    scheduler = Scheduler(config, optimizer)
 
     ######################################################################
     # Scheduler
@@ -98,7 +98,7 @@ def run(config):
         #########
         # train
         #########
-        current_lr = scheduler.adjust_learning_rate(config, optimizer, epoch)
+        scheduler.lr_scheduler.step(epoch)
         meter = util.MultiItemAverageMeter()
         for batch_idx, (vis_imgs, inf_imgs, vis_labels, inf_labels) in enumerate(tqdm(trainloader)):
 
