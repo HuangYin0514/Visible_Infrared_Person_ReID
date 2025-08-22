@@ -123,7 +123,7 @@ def run(config):
                 # Memory bank
                 USE_MEMORY_BANK = True
                 if USE_MEMORY_BANK:
-                    memory_feat = net.memoryBank.features_memory[labels]
+                    memory_feat = net.memoryBank.features_memory[labels].detach()
                     memory_loss = torch.norm((backbone_bn_features - memory_feat), p=2)
                     total_loss += 0.1 * memory_loss
 
