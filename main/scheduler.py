@@ -13,7 +13,7 @@ class Scheduler:
         if config.SCHEDULER.NAME == "WarmupMultiStepLR":
             self.lr_scheduler = WarmupMultiStepLR(
                 optimizer,
-                [40, 70],
+                [20, 40],
                 gamma=0.1,
                 warmup_factor=0.01,
                 warmup_iters=10,
