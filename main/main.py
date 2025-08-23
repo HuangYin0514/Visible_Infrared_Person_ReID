@@ -136,7 +136,6 @@ def run(config):
                 # Modal integration and propagation
                 Modal_INTEGRATION_AND_PROPAGATION_FALG = True
                 if Modal_INTEGRATION_AND_PROPAGATION_FALG:
-                    Modal_INTEGRATION_FLAG = True
                     # intergation
                     modal_fusion_feat_map = (b_vis_feat_map + b_inf_feat_map) / 2
                     modal_fusion_feat = net.modal_interaction_pooling(modal_fusion_feat_map).squeeze()
