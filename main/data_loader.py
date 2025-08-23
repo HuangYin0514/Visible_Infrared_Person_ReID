@@ -1,3 +1,4 @@
+import random
 import time
 
 import numpy as np
@@ -27,6 +28,7 @@ class Data_Loder:
                 transforms.RandomCrop(config.DATALOADER.IMAGE_SIZE),
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
+                RandomGrayscale(),
                 normalize,
                 RandomErasing(probability=0.5, mean=[0.0, 0.0, 0.0]),
             ]
@@ -161,3 +163,20 @@ def GenIdx(train_color_label, train_thermal_label):
         tmp_pos = [k for k, v in enumerate(train_thermal_label) if v == unique_label_thermal[i]]
         thermal_pos.append(tmp_pos)
     return color_pos, thermal_pos
+
+
+class RandomGrayscale:
+    def __init__(self) -> None:
+        pass
+
+    def __call__(self, x):
+        op = random.randint(0, 10)
+
+        if op == 0:
+            x[1] = x[2] = x[0]
+        elif op == 1:
+            x[0] = x[2] = x[1]
+        elif op == 2:
+            x[0] = x[1] = x[2]
+
+        return x
