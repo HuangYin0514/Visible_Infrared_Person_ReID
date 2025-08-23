@@ -134,7 +134,7 @@ def run(config):
                 # Modal calibration
 
                 # Modal integration and propagation
-                Modal_INTEGRATION_AND_PROPAGATION_FALG = True
+                Modal_INTEGRATION_AND_PROPAGATION_FALG = False
                 if Modal_INTEGRATION_AND_PROPAGATION_FALG:
                     # intergation
                     modal_fusion_feat_map = (b_vis_feat_map + b_inf_feat_map) / 2
