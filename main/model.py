@@ -3,7 +3,6 @@ import copy
 import torch
 import torch.nn as nn
 from gem_pool import GeneralizedMeanPoolingP
-from memory import MemoryBank
 from model_tool import *
 from resnet import resnet50
 from resnet_ibn_a import resnet50_ibn_a
@@ -28,6 +27,9 @@ class ReIDNet(nn.Module):
         self.modal_interaction = CIE(BACKBONE_FEATURES_DIM)
         self.modal_interaction_pooling = GeneralizedMeanPoolingP()
         self.modal_interaction_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
+
+        # ------------- modal propagation -----------------------
+        self.modal_propagation = DistillKL(T=4)
 
     def forward(self, x_vis, x_inf, modal):
         backbone_feature_map = self.backbone(x_vis, x_inf, modal)
