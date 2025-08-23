@@ -19,7 +19,7 @@ class CIE(nn.Module):
 
     def forward(self, f1, f2):
 
-        f = f1 * f2
+        f = f1 + f2
 
         # middle
         f = self.relu(self.bn(self.conv(f)))

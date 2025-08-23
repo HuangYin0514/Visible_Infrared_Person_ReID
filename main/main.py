@@ -128,7 +128,8 @@ def run(config):
 
                 # Modal interaction
                 b_vis_feat_map, b_inf_feat_map = torch.chunk(backbone_feat_map, 2, dim=0)
-                modal_fusion_feat_map, _, _ = net.modal_interaction(b_vis_feat_map, b_inf_feat_map)
+                modal_fusion_feat_map = b_vis_feat_map + b_inf_feat_map
+                # modal_fusion_feat_map, _, _ = net.modal_interaction(b_vis_feat_map, b_inf_feat_map)
                 modal_fusion_feat = net.modal_interaction_pooling(modal_fusion_feat_map).squeeze()
                 modal_fusion_bn_feat, modal_fusion_cls_score = net.modal_interaction_classifier(modal_fusion_feat)
                 modal_fusion_pid_loss = criterion.id(modal_fusion_cls_score, vis_labels)
