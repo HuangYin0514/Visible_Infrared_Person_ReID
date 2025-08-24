@@ -24,11 +24,14 @@ class ReIDNet(nn.Module):
         self.backbone_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
 
         # ------------- Modal interaction -----------------------
-        self.modal_interaction = CIE(BACKBONE_FEATURES_DIM)
-        self.modal_interaction_pooling = GeneralizedMeanPoolingP()
-        self.modal_interaction_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
+        self.modal_interaction = Modal_Interaction(BACKBONE_FEATURES_DIM)
+
+        # ------------- Modal calibration -----------------------
+        self.modal_calibration = Modal_Calibration(BACKBONE_FEATURES_DIM)
 
         # ------------- modal propagation -----------------------
+        self.modal_propagation_pooling = GeneralizedMeanPoolingP()
+        self.modal_propagation_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
         self.modal_propagation = DistillKL(T=4)
 
     def forward(self, x_vis, x_inf, modal):
@@ -130,3 +133,42 @@ class Backbone(nn.Module):
         out = self.layer4(out)
 
         return out
+
+
+class Modal_Interaction(nn.Module):
+    def __init__(self, c_dim):
+        super(Modal_Interaction, self).__init__()
+        self.c_dim = c_dim
+
+        self.vis_enhance_layer = Mamba_DAE(c_dim)
+        self.inf_enhance_layer = Mamba_DAE(c_dim)
+
+    def forward(self, vis_feat, inf_feat):
+        vis_feat = self.vis_enhance_layer(vis_feat, inf_feat)
+        inf_feat = self.inf_enhance_layer(inf_feat, vis_feat)
+        return vis_feat, inf_feat
+
+
+class Modal_Calibration(nn.Module):
+    def __init__(self, c_dim):
+        super(Modal_Calibration, self).__init__()
+        self.c_dim = c_dim
+
+    def forward(self, vis_feat, res_vis_feat, inf_feat, res_inf_feat):
+        return vis_feat, inf_feat
+
+
+class Mamba_DAE(nn.Module):
+    def __init__(self, c_dim):
+        super(Mamba_DAE, self).__init__()
+        self.c_dim = c_dim
+
+        self.c1 = nn.Sequential(
+            nn.Conv2d(c_dim, c_dim, 1, 1, 0, bias=False),
+            nn.BatchNorm2d(c_dim),
+            nn.ReLU(),
+        )
+
+    def forward(self, feat, aux_feat):
+        feat = feat + self.c1(feat - aux_feat)
+        return feat

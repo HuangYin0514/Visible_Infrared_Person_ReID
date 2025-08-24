@@ -128,18 +128,25 @@ def run(config):
 
                 # Modal information
                 b_vis_feat_map, b_inf_feat_map = torch.chunk(backbone_feat_map, 2, dim=0)
+                res_b_vis_feat_map, res_b_inf_feat_map = b_vis_feat_map, b_inf_feat_map
 
                 # Modal interaction
+                MODAL_INTERACTION_FLAG = True
+                if MODAL_INTERACTION_FLAG:
+                    b_vis_feat_map, b_inf_feat_map = net.modal_interaction(b_vis_feat_map, b_inf_feat_map)
 
                 # Modal calibration
+                MODAL_CALIBRATION_FLAG = False
+                if MODAL_CALIBRATION_FLAG:
+                    b_vis_feat_map, b_inf_feat_map = net.modal_calibration(b_vis_feat_map, res_b_vis_feat_map, b_inf_feat_map, res_b_inf_feat_map)
 
                 # Modal integration and propagation
-                Modal_INTEGRATION_AND_PROPAGATION_FALG = False
-                if Modal_INTEGRATION_AND_PROPAGATION_FALG:
+                Modal_PROPAGATION_FALG = True
+                if Modal_PROPAGATION_FALG:
                     # intergation
                     modal_fusion_feat_map = (b_vis_feat_map + b_inf_feat_map) / 2
-                    modal_fusion_feat = net.modal_interaction_pooling(modal_fusion_feat_map).squeeze()
-                    modal_fusion_bn_feat, modal_fusion_cls_score = net.modal_interaction_classifier(modal_fusion_feat)
+                    modal_fusion_feat = net.modal_propagation_pooling(modal_fusion_feat_map).squeeze()
+                    modal_fusion_bn_feat, modal_fusion_cls_score = net.modal_propagation_classifier(modal_fusion_feat)
                     modal_fusion_pid_loss = criterion.id(modal_fusion_cls_score, vis_labels)
                     total_loss += modal_fusion_pid_loss
                     meter.update(
