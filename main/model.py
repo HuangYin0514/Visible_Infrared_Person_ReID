@@ -149,15 +149,6 @@ class Modal_Interaction(nn.Module):
         return vis_feat, inf_feat
 
 
-class Modal_Calibration(nn.Module):
-    def __init__(self, c_dim):
-        super(Modal_Calibration, self).__init__()
-        self.c_dim = c_dim
-
-    def forward(self, vis_feat, res_vis_feat, inf_feat, res_inf_feat):
-        return vis_feat, inf_feat
-
-
 class Mamba_DAE(nn.Module):
     def __init__(self, c_dim):
         super(Mamba_DAE, self).__init__()
@@ -172,3 +163,12 @@ class Mamba_DAE(nn.Module):
     def forward(self, feat, aux_feat):
         feat = feat + self.c1(feat - aux_feat)
         return feat
+
+
+class Modal_Calibration(nn.Module):
+    def __init__(self, c_dim):
+        super(Modal_Calibration, self).__init__()
+        self.c_dim = c_dim
+
+    def forward(self, vis_feat, res_vis_feat, inf_feat, res_inf_feat):
+        return vis_feat, inf_feat
