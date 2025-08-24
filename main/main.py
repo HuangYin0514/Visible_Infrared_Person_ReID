@@ -134,7 +134,7 @@ def run(config):
                 # Modal calibration
 
                 # Modal integration and propagation
-                Modal_INTEGRATION_AND_PROPAGATION_FALG = False
+                Modal_INTEGRATION_AND_PROPAGATION_FALG = True
                 if Modal_INTEGRATION_AND_PROPAGATION_FALG:
                     # intergation
                     modal_fusion_feat_map = (b_vis_feat_map + b_inf_feat_map) / 2
@@ -149,15 +149,15 @@ def run(config):
                     )
 
                     # propagation
-                    # student_logits = backbone_cls_score
-                    # teacher_logits = torch.cat([modal_fusion_cls_score, modal_fusion_cls_score], dim=0)
-                    # modal_propagation_loss = net.modal_propagation(student_logits, teacher_logits)
-                    # total_loss += modal_propagation_loss
-                    # meter.update(
-                    #     {
-                    #         "modal_propagation_loss": modal_propagation_loss.item(),
-                    #     }
-                    # )
+                    student_logits = backbone_cls_score
+                    teacher_logits = torch.cat([modal_fusion_cls_score, modal_fusion_cls_score], dim=0)
+                    modal_propagation_loss = net.modal_propagation(student_logits, teacher_logits)
+                    total_loss += modal_propagation_loss
+                    meter.update(
+                        {
+                            "modal_propagation_loss": modal_propagation_loss.item(),
+                        }
+                    )
 
                 optimizer.zero_grad()
                 total_loss.backward()
