@@ -199,6 +199,7 @@ class Gate_Fusion(nn.Module):
         inter_c_dim = int(c_dim // r)
 
         self.att = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
             nn.Conv2d(c_dim, inter_c_dim, kernel_size=1, stride=1, padding=0),
             nn.BatchNorm2d(inter_c_dim),
             nn.ReLU(inplace=True),
