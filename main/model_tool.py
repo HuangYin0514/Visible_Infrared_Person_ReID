@@ -4,6 +4,65 @@ from torch.nn import functional as F
 
 
 #############################################################
+def drop_path(x, drop_prob: float = 0.0, training: bool = False):
+    if drop_prob == 0.0 or not training:
+        return x
+    keep_prob = 1 - drop_prob
+    shape = (x.shape[0],) + (1,) * (x.ndim - 1)  # work with diff dim tensors, not just 2D ConvNets
+    random_tensor = keep_prob + torch.rand(shape, dtype=x.dtype, device=x.device)
+    random_tensor.floor_()  # binarize
+    output = x.div(keep_prob) * random_tensor
+    return output
+
+
+class DropPath(nn.Module):
+    """https://github.com/hu-xh/CPNet/blob/main/models/CPNet.py#L231
+    DropPath (Stochastic Depth) 实现：
+    - 类似 Dropout，但不是随机丢弃单个神经元，而是随机丢弃整个残差分支。
+    - 训练时：每个样本的残差分支要么全部保留，要么整体置零。
+    - 推理时：不做丢弃，保持完整。
+
+    self.drop_path = DropPath(drop_rate) if drop_rate > 0. else nn.Identity()
+    """
+
+    def __init__(self, drop_prob=None):
+        super(DropPath, self).__init__()
+        self.drop_prob = drop_prob
+
+    def forward(self, x):
+        return drop_path(x, self.drop_prob, self.training)
+
+
+#############################################################
+class LayerNorm(nn.Module):
+    """https://github.com/hu-xh/CPNet/blob/main/models/CPNet.py#L231
+    channels_last：常用于 Transformer 或 MLP，输入形状 [B, H, W, C]
+    channels_first：常用于 CNN，输入形状 [B, C, H, W]
+    """
+
+    def __init__(self, normalized_shape, eps=1e-6, data_format="channels_first"):
+        super().__init__()
+        self.weight = nn.Parameter(torch.ones(normalized_shape), requires_grad=True)
+        self.bias = nn.Parameter(torch.zeros(normalized_shape), requires_grad=True)
+        self.eps = eps
+        self.data_format = data_format
+        if self.data_format not in ["channels_last", "channels_first"]:
+            raise ValueError(f"not support data format '{self.data_format}'")
+        self.normalized_shape = (normalized_shape,)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if self.data_format == "channels_last":
+            return F.layer_norm(x, self.normalized_shape, self.weight, self.bias, self.eps)
+        elif self.data_format == "channels_first":
+            # [batch_size, channels, height, width]
+            mean = x.mean(1, keepdim=True)
+            var = (x - mean).pow(2).mean(1, keepdim=True)
+            x = (x - mean) / torch.sqrt(var + self.eps)
+            x = self.weight[:, None, None] * x + self.bias[:, None, None]
+            return x
+
+
+#############################################################
 class DistillKL(nn.Module):
     """KL divergence for distillation"""
 

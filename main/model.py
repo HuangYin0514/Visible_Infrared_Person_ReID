@@ -160,8 +160,10 @@ class Mamba_DAE(nn.Module):
             nn.ReLU(),
         )
 
+        self.drop_path = DropPath(drop_prob=0.5)
+
     def forward(self, feat, aux_feat):
-        feat = feat + self.c1(feat - aux_feat)
+        feat = feat + self.drop_path(self.c1(aux_feat))
         return feat
 
 
