@@ -20,7 +20,7 @@ class ReIDNet(nn.Module):
         # ------------- Backbone -----------------------
         self.backbone = Backbone(BACKBONE_TYPE)
 
-        self.backbone_pooling = nn.AdaptiveAvgPool2d(1)
+        self.backbone_pooling = GeneralizedMeanPoolingP()
         self.backbone_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
 
         # ------------- Modal interaction -----------------------
@@ -30,7 +30,7 @@ class ReIDNet(nn.Module):
         self.modal_calibration = Modal_Calibration(BACKBONE_FEATURES_DIM)
 
         # ------------- modal propagation -----------------------
-        self.modal_propagation_pooling = nn.AdaptiveAvgPool2d(1)
+        self.modal_propagation_pooling = GeneralizedMeanPoolingP()
         self.modal_propagation_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
         self.modal_propagation = DistillKL(T=4)
 
