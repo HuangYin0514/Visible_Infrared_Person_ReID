@@ -3,6 +3,7 @@ import copy
 import torch
 import torch.nn as nn
 from gem_pool import GeneralizedMeanPoolingP
+from mamba_dae import VisionMambaModule
 from model_tool import *
 from resnet import resnet50
 from resnet_ibn_a import resnet50_ibn_a
@@ -154,16 +155,10 @@ class Mamba_DAE(nn.Module):
         super(Mamba_DAE, self).__init__()
         self.c_dim = c_dim
 
-        self.c1 = nn.Sequential(
-            nn.Conv2d(c_dim, c_dim, 1, 1, 0, bias=False),
-            nn.BatchNorm2d(c_dim),
-            nn.ReLU(),
-        )
-
-        self.drop_path = DropPath(drop_prob=0.5)
+        self.mamba = VisionMambaModule(in_cdim=c_dim, hidden_cdim=768)
 
     def forward(self, feat, aux_feat):
-        feat = feat + self.drop_path(self.c1(aux_feat))
+        feat = feat + self.mamba(aux_feat)
         return feat
 
 
