@@ -155,10 +155,16 @@ class Mamba_DAE(nn.Module):
         super(Mamba_DAE, self).__init__()
         self.c_dim = c_dim
 
-        self.mamba = VisionMambaModule(in_cdim=c_dim, hidden_cdim=768)
+        self.c1 = nn.Sequential(
+            nn.Conv2d(c_dim, c_dim, 1, 1, 0, bias=False),
+            nn.BatchNorm2d(c_dim),
+            nn.ReLU(),
+        )
+        self.mamba = VisionMambaModule(in_cdim=c_dim, hidden_cdim=64)
 
     def forward(self, feat, aux_feat):
         feat = feat + self.mamba(aux_feat)
+        # feat = feat + self.c1(aux_feat)
         return feat
 
 
