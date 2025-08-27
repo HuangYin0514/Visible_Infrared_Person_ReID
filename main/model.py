@@ -160,7 +160,7 @@ class Mamba_DAE(nn.Module):
             nn.BatchNorm2d(c_dim),
             nn.ReLU(),
         )
-        self.mamba = VisionMambaModule(in_cdim=c_dim, hidden_cdim=64)
+        self.mamba = VisionMambaModule(in_cdim=c_dim, hidden_cdim=96)
 
     def forward(self, feat, aux_feat):
         feat = feat + self.mamba(aux_feat)
