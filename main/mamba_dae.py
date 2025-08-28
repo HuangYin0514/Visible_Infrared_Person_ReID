@@ -162,9 +162,9 @@ class SSM(nn.Module):
             delta_parameter_i = delta_parameter[:, i, :]  # (B, D)
             u_i = u[:, i, :]  # (B, D)
 
-            item_0 = einsum(A_parameter_i, x, "D state_dim, B D state_dim -> B D state_dim")  # [B, D, state_dim]
-            item_1 = einsum(B_parameter_i, u_i, "B state_dim, B D -> B D state_dim")  # [B, D, state_dim]
-            dx = item_0 + item_1  # [B, D, state_dim]
+            A_x = einsum(A_parameter_i, x, "D state_dim, B D state_dim -> B D state_dim")  # [B, D, state_dim]
+            B_u = einsum(B_parameter_i, u_i, "B state_dim, B D -> B D state_dim")  # [B, D, state_dim]
+            dx = A_x + B_u  # [B, D, state_dim]
             x = x + einsum(delta_parameter_i, dx, "B D, B D state_dim -> B D state_dim")  # [B, D, state_dim]
             y = einsum(x, C_parameter_i, "B D state_dim, B state_dim -> B D")
 
