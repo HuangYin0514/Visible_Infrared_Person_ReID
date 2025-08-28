@@ -144,6 +144,9 @@ class Modal_Interaction(nn.Module):
         self.vis_enhance_layer = Mamba_DAE(c_dim)
         self.inf_enhance_layer = Mamba_DAE(c_dim)
 
+        self.vis_enhance_layer.apply(weights_init_kaiming)
+        self.inf_enhance_layer.apply(weights_init_kaiming)
+
     def forward(self, vis_feat, inf_feat):
         vis_feat = self.vis_enhance_layer(vis_feat, inf_feat)
         inf_feat = self.inf_enhance_layer(inf_feat, vis_feat)
@@ -168,6 +171,9 @@ class Modal_Calibration(nn.Module):
 
         self.vis_gate_calibration = Gate_Fusion(c_dim)
         self.inf_gate_calibration = Gate_Fusion(c_dim)
+
+        self.vis_gate_calibration.apply(weights_init_kaiming)
+        self.inf_gate_calibration.apply(weights_init_kaiming)
 
     def forward(self, vis_feat, res_vis_feat, inf_feat, res_inf_feat):
         vis_feat = self.vis_gate_calibration(vis_feat, res_vis_feat)
