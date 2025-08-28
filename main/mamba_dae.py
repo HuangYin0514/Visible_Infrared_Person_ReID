@@ -147,14 +147,27 @@ class SSM(nn.Module):
         B, L, D = u.shape
 
         # Step 1: Discretize continuous parameters (A, B)
-        delta_A = torch.exp(einsum(delta_parameter, A_parameter, "B L D, D state_dim -> B L D state_dim"))
-        delta_B_u = einsum(delta_parameter, B_parameter, u, "B L D, B L state_dim, B L D -> B L D state_dim")
+        # delta_A = torch.exp(einsum(delta_parameter, A_parameter, "B L D, D state_dim -> B L D state_dim"))
+        # delta_B_u = einsum(delta_parameter, B_parameter, u, "B L D, B L state_dim, B L D -> B L D state_dim")
 
-        x = torch.zeros((B, D, self.state_dim), device=delta_A.device)
+        x = torch.zeros((B, D, self.state_dim), device=A_parameter.device)
         ys = []
         for i in range(L):
-            x = delta_A[:, i] * x + delta_B_u[:, i]
-            y = einsum(x, C_parameter[:, i, :], "B D state_dim, B state_dim -> B D")
+            # x = delta_A[:, i] * x + delta_B_u[:, i]
+            # y = einsum(x, C_parameter[:, i, :], "B D state_dim, B state_dim -> B D")
+
+            A_parameter_i = A_parameter  # (D, state_dim)
+            B_parameter_i = B_parameter[:, i, :]  # (B, state_dim)
+            C_parameter_i = C_parameter[:, i, :]  # (B, state_dim)
+            delta_parameter_i = delta_parameter[:, i, :]  # (B, D)
+            u_i = u[:, i, :]  # (B, D)
+
+            item_0 = einsum(A_parameter_i, x, "D state_dim, B D state_dim -> B D state_dim")  # [B, D, state_dim]
+            item_1 = einsum(B_parameter_i, u_i, "B state_dim, B D -> B D state_dim")  # [B, D, state_dim]
+            dx = item_0 + item_1  # [B, D, state_dim]
+            x = x + einsum(delta_parameter_i, dx, "B D, B D state_dim -> B D state_dim")  # [B, D, state_dim]
+            y = einsum(x, C_parameter_i, "B D state_dim, B state_dim -> B D")
+
             ys.append(y)
         y = torch.stack(ys, dim=1)  # [B, L, D]
 
