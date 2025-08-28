@@ -9,17 +9,15 @@ from einops import einsum, rearrange, repeat
 class VisionMambaModule(nn.Module):
     def __init__(self, in_cdim=2048, hidden_cdim=768):
         super(VisionMambaModule, self).__init__()
-
         self.pe = Patch_Embedding(in_cdim=in_cdim, out_cdim=hidden_cdim, small_size=(3, 3))
         self.mamba = Mamba(in_cdim=hidden_cdim, out_cdim=in_cdim)
-        self.ie = Inverse_Patch_Embedding(small_size=(3, 3))
+        self.ipe = Inverse_Patch_Embedding(small_size=(3, 3))
 
-    def forward(self, feat_1, feat_2):
-        feat = feat_2
-        B, C, H, W = feat_1.shape
-        token_x = self.pe(feat)  # [bs, H*W, hidden_cdim]
+    def forward(self, x):
+        B, C, H, W = x.shape
+        token_x = self.pe(x)  # [bs, H*W, hidden_cdim]
         output = self.mamba(token_x)  # [bs, H*W, in_cdim]
-        output = self.ie(output, H, W)  # [bs, in_cdim, H, W]
+        output = self.ipe(output, H, W)  # [bs, in_cdim, H, W]
         return output
 
 
@@ -28,7 +26,6 @@ class Patch_Embedding(nn.Module):
     def __init__(self, in_cdim=3, out_cdim=768, small_size=(3, 3)):
         super(Patch_Embedding, self).__init__()
         self.pool = nn.AdaptiveAvgPool2d(small_size)
-        # self.pool = nn.AdaptiveMaxPool2d(size)
         self.proj = nn.Linear(in_cdim, out_cdim)
 
     def forward(self, x):
@@ -42,6 +39,7 @@ class Inverse_Patch_Embedding(nn.Module):
 
     def __init__(self, small_size=(3, 3)):
         super(Inverse_Patch_Embedding, self).__init__()
+
         self.small_size = small_size
 
     def forward(self, x, h, w):
@@ -107,7 +105,7 @@ class Mamba(nn.Module):
 
 class SSM(nn.Module):
 
-    def __init__(self, inner_dim=768 * 2, state_dim=16, dt_rank=None):
+    def __init__(self, inner_dim=768 * 2, state_dim=16, expand_ratio=2, dt_rank=None):
         super(SSM, self).__init__()
 
         self.inner_dim = inner_dim
