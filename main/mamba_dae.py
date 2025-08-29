@@ -181,7 +181,7 @@ class SSM(nn.Module):
             A_parameter_i = A_parameter  # (D, N)
             B_parameter_i = B_parameter[:, i, :]  # (B, N)
             C_parameter_i = C_parameter[:, i, :]  # (B, N)
-            delta_parameter_i = delta_parameter[:, i, :]  # (B, D)
+            delta_parameter_i = delta_parameter[:, i, :] * 0 + 0.01  # (B, D)
             u_i = u[:, i, :]  # (B, D)
 
             q = euler_step(None, x, delta_parameter_i, u_i, A_parameter_i, B_parameter_i)  # [B, D, N]
