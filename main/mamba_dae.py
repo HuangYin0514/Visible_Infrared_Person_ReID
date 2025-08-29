@@ -22,6 +22,19 @@ class VisionMambaModule(nn.Module):
         return output
 
 
+class Inverse_Patch_Embedding(nn.Module):
+
+    def __init__(self, small_size=(3, 3)):
+        super(Inverse_Patch_Embedding, self).__init__()
+
+        self.small_size = small_size
+
+    def forward(self, x, h, w):
+        out = rearrange(x, "b (h w) c -> b c h w", h=self.small_size[0], w=self.small_size[1])
+        out = F.interpolate(out, size=(h, w), mode="bilinear", align_corners=False)
+        return out
+
+
 class Patch_Embedding(nn.Module):
 
     def __init__(self, in_cdim=3, out_cdim=768, small_size=(3, 3)):
@@ -34,19 +47,6 @@ class Patch_Embedding(nn.Module):
         x = rearrange(x, "b c h w -> b (h w) c")
         x = self.proj(x)
         return x
-
-
-class Inverse_Patch_Embedding(nn.Module):
-
-    def __init__(self, small_size=(3, 3)):
-        super(Inverse_Patch_Embedding, self).__init__()
-
-        self.small_size = small_size
-
-    def forward(self, x, h, w):
-        out = rearrange(x, "b (h w) c -> b c h w", h=self.small_size[0], w=self.small_size[1])
-        out = F.interpolate(out, size=(h, w), mode="bilinear", align_corners=False)
-        return out
 
 
 class Mamba(nn.Module):
