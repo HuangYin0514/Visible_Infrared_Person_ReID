@@ -5,10 +5,11 @@ if __name__ == "__main__":
     ################################
     # 定义符号
     ################################
-    W = Matrix(symbols([" ".join(f"w_{i}{j}" for i in range(4) for j in range(4))])).reshape(4, 4)
-    q = Matrix([symbols(f"q_{i}") for i in range(4)])
-    q_inf = Matrix([symbols(f"q_inf{i}") for i in range(4)])
-    dq = Matrix([symbols(f"dq{i}") for i in range(4)])
+    state_dim = 4
+    W = Matrix(symbols([" ".join(f"w_{i}{j}" for i in range(state_dim) for j in range(state_dim))])).reshape(state_dim, state_dim)
+    q = Matrix([symbols(f"q_{i}") for i in range(state_dim)])
+    q_inf = Matrix([symbols(f"q_inf{i}") for i in range(state_dim)])
+    dq = Matrix([symbols(f"dq{i}") for i in range(state_dim)])
 
     print("=" * 10)
     print(W.__repr__())

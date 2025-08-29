@@ -26,9 +26,11 @@ class ReIDNet(nn.Module):
 
         # ------------- Modal interaction -----------------------
         self.modal_interaction = Modal_Interaction(BACKBONE_FEATURES_DIM)
+        self.modal_interaction.apply(weights_init_kaiming)
 
         # ------------- Modal calibration -----------------------
         self.modal_calibration = Modal_Calibration(BACKBONE_FEATURES_DIM)
+        self.modal_calibration.apply(weights_init_kaiming)
 
         # ------------- modal propagation -----------------------
         self.modal_propagation_pooling = GeneralizedMeanPoolingP()
@@ -144,9 +146,6 @@ class Modal_Interaction(nn.Module):
         self.vis_enhance_layer = Mamba_DAE(c_dim)
         self.inf_enhance_layer = Mamba_DAE(c_dim)
 
-        self.vis_enhance_layer.apply(weights_init_kaiming)
-        self.inf_enhance_layer.apply(weights_init_kaiming)
-
     def forward(self, vis_feat, inf_feat):
         vis_feat = self.vis_enhance_layer(vis_feat, inf_feat)
         inf_feat = self.inf_enhance_layer(inf_feat, vis_feat)
@@ -171,9 +170,6 @@ class Modal_Calibration(nn.Module):
 
         self.vis_gate_calibration = Gate_Fusion(c_dim)
         self.inf_gate_calibration = Gate_Fusion(c_dim)
-
-        self.vis_gate_calibration.apply(weights_init_kaiming)
-        self.inf_gate_calibration.apply(weights_init_kaiming)
 
     def forward(self, vis_feat, res_vis_feat, inf_feat, res_inf_feat):
         vis_feat = self.vis_gate_calibration(vis_feat, res_vis_feat)
