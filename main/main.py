@@ -136,7 +136,7 @@ def run(config):
                     b_vis_feat_map, b_inf_feat_map = net.modal_interaction(b_vis_feat_map, b_inf_feat_map)
 
                 # Modal calibration
-                MODAL_CALIBRATION_FLAG = True
+                MODAL_CALIBRATION_FLAG = False
                 if MODAL_CALIBRATION_FLAG:
                     b_vis_feat_map, b_inf_feat_map = net.modal_calibration(b_vis_feat_map, res_b_vis_feat_map, b_inf_feat_map, res_b_inf_feat_map)
 
