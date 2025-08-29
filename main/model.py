@@ -26,11 +26,9 @@ class ReIDNet(nn.Module):
 
         # ------------- Modal interaction -----------------------
         self.modal_interaction = Modal_Interaction(BACKBONE_FEATURES_DIM)
-        self.modal_interaction.apply(weights_init_kaiming)
 
         # ------------- Modal calibration -----------------------
         self.modal_calibration = Modal_Calibration(BACKBONE_FEATURES_DIM)
-        self.modal_calibration.apply(weights_init_kaiming)
 
         # ------------- modal propagation -----------------------
         self.modal_propagation_pooling = GeneralizedMeanPoolingP()
@@ -156,10 +154,17 @@ class Mamba_DAE(nn.Module):
     def __init__(self, c_dim):
         super(Mamba_DAE, self).__init__()
         self.c_dim = c_dim
+
+        self.c1 = nn.Sequential(
+            nn.Conv2d(c_dim, c_dim, 1, 1, 0, bias=False),
+            nn.BatchNorm2d(c_dim),
+            nn.ReLU(),
+        )
         self.mamba = VisionMambaModule(in_cdim=c_dim, hidden_cdim=96)
 
     def forward(self, feat, aux_feat):
         feat = feat + self.mamba(aux_feat)
+        # feat = feat + self.c1(aux_feat)
         return feat
 
 

@@ -9,6 +9,7 @@ from einops import einsum, rearrange, repeat
 class VisionMambaModule(nn.Module):
     def __init__(self, in_cdim=2048, hidden_cdim=768):
         super(VisionMambaModule, self).__init__()
+
         self.pe = Patch_Embedding(in_cdim=in_cdim, out_cdim=hidden_cdim, small_size=(3, 3))
         self.mamba = Mamba(in_cdim=hidden_cdim, out_cdim=in_cdim)
         self.ipe = Inverse_Patch_Embedding(small_size=(3, 3))
@@ -147,27 +148,14 @@ class SSM(nn.Module):
         B, L, D = u.shape
 
         # Step 1: Discretize continuous parameters (A, B)
-        # delta_A = torch.exp(einsum(delta_parameter, A_parameter, "B L D, D state_dim -> B L D state_dim"))
-        # delta_B_u = einsum(delta_parameter, B_parameter, u, "B L D, B L state_dim, B L D -> B L D state_dim")
+        delta_A = torch.exp(einsum(delta_parameter, A_parameter, "B L D, D state_dim -> B L D state_dim"))
+        delta_B_u = einsum(delta_parameter, B_parameter, u, "B L D, B L state_dim, B L D -> B L D state_dim")
 
-        x = torch.zeros((B, D, self.state_dim), device=A_parameter.device)
+        x = torch.zeros((B, D, self.state_dim), device=delta_A.device)
         ys = []
         for i in range(L):
-            # x = delta_A[:, i] * x + delta_B_u[:, i]
-            # y = einsum(x, C_parameter[:, i, :], "B D state_dim, B state_dim -> B D")
-
-            A_parameter_i = A_parameter  # (D, state_dim)
-            B_parameter_i = B_parameter[:, i, :]  # (B, state_dim)
-            C_parameter_i = C_parameter[:, i, :]  # (B, state_dim)
-            delta_parameter_i = delta_parameter[:, i, :]  # (B, D)
-            u_i = u[:, i, :]  # (B, D)
-
-            A_x = einsum(A_parameter_i, x, "D state_dim, B D state_dim -> B D state_dim")  # [B, D, state_dim]
-            B_u = einsum(B_parameter_i, u_i, "B state_dim, B D -> B D state_dim")  # [B, D, state_dim]
-            dx = A_x + B_u  # [B, D, state_dim]
-            x = x + einsum(delta_parameter_i, dx, "B D, B D state_dim -> B D state_dim")  # [B, D, state_dim]
-            y = einsum(x, C_parameter_i, "B D state_dim, B state_dim -> B D")
-
+            x = delta_A[:, i] * x + delta_B_u[:, i]
+            y = einsum(x, C_parameter[:, i, :], "B D state_dim, B state_dim -> B D")
             ys.append(y)
         y = torch.stack(ys, dim=1)  # [B, L, D]
 

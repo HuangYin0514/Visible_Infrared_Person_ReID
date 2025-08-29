@@ -141,7 +141,7 @@ def run(config):
                     b_vis_feat_map, b_inf_feat_map = net.modal_calibration(b_vis_feat_map, res_b_vis_feat_map, b_inf_feat_map, res_b_inf_feat_map)
 
                 # Modal integration and propagation
-                Modal_PROPAGATION_FALG = False
+                Modal_PROPAGATION_FALG = True
                 if Modal_PROPAGATION_FALG:
                     # intergation
                     modal_fusion_feat_map = (b_vis_feat_map + b_inf_feat_map) / 2
