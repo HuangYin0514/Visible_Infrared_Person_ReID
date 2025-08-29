@@ -10,36 +10,36 @@ class VisionMambaModule(nn.Module):
     def __init__(self, in_cdim=2048, hidden_cdim=768):
         super(VisionMambaModule, self).__init__()
 
-        self.pe = Patch_Embedding(in_cdim=in_cdim, out_cdim=hidden_cdim, small_size=(3, 3))
+        self.pe = Patch_Embedding(in_cdim=in_cdim, out_cdim=hidden_cdim, size=(3, 3))
         self.mamba = Mamba(in_cdim=hidden_cdim, out_cdim=in_cdim)
-        self.ipe = Inverse_Patch_Embedding(small_size=(3, 3))
+        self.ie = Inverse_Patch_Embedding(size=(3, 3))
 
     def forward(self, x):
         B, C, H, W = x.shape
         token_x = self.pe(x)  # [bs, H*W, hidden_cdim]
         output = self.mamba(token_x)  # [bs, H*W, in_cdim]
-        output = self.ipe(output, H, W)  # [bs, in_cdim, H, W]
+        output = self.ie(output, H, W)  # [bs, in_cdim, H, W]
         return output
 
 
 class Inverse_Patch_Embedding(nn.Module):
 
-    def __init__(self, small_size=(3, 3)):
+    def __init__(self, size=(3, 3)):
         super(Inverse_Patch_Embedding, self).__init__()
 
-        self.small_size = small_size
+        self.size = size
 
     def forward(self, x, h, w):
-        out = rearrange(x, "b (h w) c -> b c h w", h=self.small_size[0], w=self.small_size[1])
+        out = rearrange(x, "b (h w) c -> b c h w", h=self.size[0], w=self.size[1])
         out = F.interpolate(out, size=(h, w), mode="bilinear", align_corners=False)
         return out
 
 
 class Patch_Embedding(nn.Module):
 
-    def __init__(self, in_cdim=3, out_cdim=768, small_size=(3, 3)):
+    def __init__(self, in_cdim=3, out_cdim=768, size=(3, 3)):
         super(Patch_Embedding, self).__init__()
-        self.pool = nn.AdaptiveAvgPool2d(small_size)
+        self.pool = nn.AdaptiveAvgPool2d(size)
         self.proj = nn.Linear(in_cdim, out_cdim)
 
     def forward(self, x):
