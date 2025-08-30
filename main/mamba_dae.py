@@ -146,7 +146,7 @@ class SSM(nn.Module):
         B, L, D = u.shape
         DEVICE = u.device
 
-        def DE_func(t, q, dq, u_i, A_parameter_i, B_parameter_i):
+        def DE_func(t, q, u_i, A_parameter_i, B_parameter_i):
             """
             系统右端项: rhs = f(t, q, dq)
             rhs: right-hand side
@@ -159,43 +159,38 @@ class SSM(nn.Module):
             rhs = A_x + B_u  # [B, D, N]
             return rhs
 
-        def dynamics(t, y, u_i, A_parameter_i, B_parameter_i):
+        def dynamics(t, q, u_i, A_parameter_i, B_parameter_i):
             """
             一阶系统形式
             """
-            B, D, N2 = y.shape
-            # (delta, B_parameter, C_parameter) = delta_B_C.split(split_size=[self.dt_rank, self.N, self.N], dim=-1)  # delta: (B, L, dt_rank). B, C: (B, L, N)
-            q, dq = y.split(split_size=[self.N, self.N], dim=-1)
-            ddq = DE_func(t, q, dq, u_i, A_parameter_i, B_parameter_i)  # [B, D, N]
-            return torch.cat([dq, ddq], dim=-1)  # [B, D, 2N]
+            B, D, N = q.shape
+            dq = DE_func(t, q, u_i, A_parameter_i, B_parameter_i)  # [B, D, N]
+            return dq
 
-        def euler_step(t, y, h, u_i, A_parameter_i, B_parameter_i):
+        def euler_step(t, q, h, u_i, A_parameter_i, B_parameter_i):
             """
             一步欧拉法
             """
-            B, D, N2 = y.shape
-            k1 = dynamics(t, y, u_i, A_parameter_i, B_parameter_i)  # [B, D, 2N]
-            return y + einsum(h, k1, "B D, B D N -> B D N")  # [B, D, 2N]
+            B, D, N = q.shape
+            k1 = dynamics(t, q, u_i, A_parameter_i, B_parameter_i)  # [B, D, N]
+            return q + einsum(h, k1, "B D, B D N -> B D N")  # [B, D, N]
 
-        q = torch.zeros((B, D, self.N), device=A_parameter.device)
-        dq = torch.zeros((B, D, self.N), device=A_parameter.device)
-        res_q_list = []
+        x = torch.zeros((B, D, self.N), device=A_parameter.device)
+        ys = []
         for i in range(L):
             A_parameter_i = A_parameter  # (D, N)
             B_parameter_i = B_parameter[:, i, :]  # (B, N)
             C_parameter_i = C_parameter[:, i, :]  # (B, N)
-            delta_parameter_i = delta_parameter[:, i, :]  # (B, D)
+            delta_parameter_i = delta_parameter[:, i, :] * 0 + 0.01  # (B, D)
             u_i = u[:, i, :]  # (B, D)
 
-            y = torch.cat([q, dq], dim=-1)  # [B, D, 2N]
-            y = euler_step(None, y, delta_parameter_i, u_i, A_parameter_i, B_parameter_i)  # [B, D, 2N]
-            q, dq = y.split(split_size=[self.N, self.N], dim=-1)
-            res_q = einsum(q, C_parameter_i, "B D N, B N -> B D")
+            q = euler_step(None, x, delta_parameter_i, u_i, A_parameter_i, B_parameter_i)  # [B, D, N]
+            y = einsum(q, C_parameter_i, "B D N, B N -> B D")
 
-            res_q_list.append(res_q)
-        res_q = torch.stack(res_q_list, dim=1)  # [B, L, D]
-        res_q = res_q + u * D_parameter  # [B, L, D]
-        return res_q
+            ys.append(y)
+        y = torch.stack(ys, dim=1)  # [B, L, D]
+        # y = y + u * D_parameter  # [B, L, D]
+        return y
 
 
 ################################################
