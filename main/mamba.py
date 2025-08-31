@@ -110,15 +110,15 @@ class SSM(nn.Module):
         super(SSM, self).__init__()
 
         self.inner_dim = inner_dim
-        self.N = state_dim
+        self.state_dim = state_dim
         self.dt_rank = dt_rank
 
         # A
-        A = repeat(torch.arange(1, self.N + 1), "N -> D N", D=self.inner_dim)  # Shape (inner_dim, N); Ex. [[1, 2, ... , 16], ... ]
+        A = repeat(torch.arange(1, self.state_dim + 1), "state_dim -> d state_dim", d=self.inner_dim)  # Shape (inner_dim, state_dim); Ex. [[1, 2, ... , 16], ... ]
         self.A_log = nn.Parameter(torch.log(A))
 
         # x is projected to delta_ori, B, C
-        self.x_proj = nn.Linear(self.inner_dim, self.dt_rank + self.N * 2, bias=False)
+        self.x_proj = nn.Linear(self.inner_dim, self.dt_rank + self.state_dim * 2, bias=False)
 
         # delta_ori is projected to delta
         self.dt_proj = nn.Linear(self.dt_rank, self.inner_dim, bias=True)
@@ -130,12 +130,14 @@ class SSM(nn.Module):
         B, L, D = x.shape
 
         # Step 0: Get A and D
-        A_parameter = -torch.exp(self.A_log.float())  # Shape (D, N); Ex. [-[1, 2, ... , 16], ... ]
+        A_parameter = -torch.exp(self.A_log.float())  # Shape (D, state_dim); Ex. [-[1, 2, ... , 16], ... ]
         D_parameter = self.D.float()
 
         # Step 1: Project x to delta_B_C
-        delta_B_C = self.x_proj(x)  # [B, L, D + N * 2]
-        (delta, B_parameter, C_parameter) = delta_B_C.split(split_size=[self.dt_rank, self.N, self.N], dim=-1)  # delta: (B, L, dt_rank). B, C: (B, L, N)
+        delta_B_C = self.x_proj(x)  # [B, L, D + state_dim * 2]
+        (delta, B_parameter, C_parameter) = delta_B_C.split(
+            split_size=[self.dt_rank, self.state_dim, self.state_dim], dim=-1
+        )  # delta: (B, L, dt_rank). B, C: (B, L, state_dim)
         delta_parameter = F.softplus(self.dt_proj(delta))  # (B, L, D)
 
         y = self.selective_scan(x, delta_parameter, A_parameter, B_parameter, C_parameter, D_parameter)  # [B, L, D]
@@ -144,52 +146,21 @@ class SSM(nn.Module):
 
     def selective_scan(self, u, delta_parameter, A_parameter, B_parameter, C_parameter, D_parameter):
         B, L, D = u.shape
-        DEVICE = u.device
 
-        def DE_func(t, q, u_i, A_parameter_i, B_parameter_i):
-            """
-            系统右端项: rhs = f(t, q, dq)
-            rhs: right-hand side
-            """
-            B, D, N = q.shape
-            B, D = u_i.shape
+        # Step 1: Discretize continuous parameters (A, B)
+        delta_A = torch.exp(einsum(delta_parameter, A_parameter, "B L D, D state_dim -> B L D state_dim"))
+        delta_B_u = einsum(delta_parameter, B_parameter, u, "B L D, B L state_dim, B L D -> B L D state_dim")
 
-            A_x = einsum(A_parameter_i, q, "D N, B D N -> B D N")  # [B, D, N]
-            B_u = einsum(B_parameter_i, u_i, "B N, B D -> B D N")  # [B, D, N]
-            rhs = A_x + B_u  # [B, D, N]
-            return rhs
-
-        def dynamics(t, q, u_i, A_parameter_i, B_parameter_i):
-            """
-            一阶系统形式
-            """
-            B, D, N = q.shape
-            dq = DE_func(t, q, u_i, A_parameter_i, B_parameter_i)  # [B, D, N]
-            return dq
-
-        def euler_step(t, q, h, u_i, A_parameter_i, B_parameter_i):
-            """
-            一步欧拉法
-            """
-            B, D, N = q.shape
-            k1 = dynamics(t, q, u_i, A_parameter_i, B_parameter_i)  # [B, D, N]
-            return q + einsum(h, k1, "B D, B D N -> B D N")  # [B, D, N]
-
-        x = torch.zeros((B, D, self.N), device=A_parameter.device)
+        x = torch.zeros((B, D, self.state_dim), device=delta_A.device)
         ys = []
         for i in range(L):
-            A_parameter_i = A_parameter  # (D, N)
-            B_parameter_i = B_parameter[:, i, :]  # (B, N)
-            C_parameter_i = C_parameter[:, i, :]  # (B, N)
-            delta_parameter_i = delta_parameter[:, i, :] * 0 + 0.01  # (B, D)
-            u_i = u[:, i, :]  # (B, D)
-
-            q = euler_step(None, x, delta_parameter_i, u_i, A_parameter_i, B_parameter_i)  # [B, D, N]
-            y = einsum(q, C_parameter_i, "B D N, B N -> B D")
-
+            x = delta_A[:, i] * x + delta_B_u[:, i]
+            y = einsum(x, C_parameter[:, i, :], "B D state_dim, B state_dim -> B D")
             ys.append(y)
         y = torch.stack(ys, dim=1)  # [B, L, D]
-        # y = y + u * D_parameter  # [B, L, D]
+
+        y = y + u * D_parameter  # [B, L, D]
+
         return y
 
 

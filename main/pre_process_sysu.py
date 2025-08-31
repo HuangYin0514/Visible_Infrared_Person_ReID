@@ -6,10 +6,15 @@ import util
 from PIL import Image
 
 # 固定参数
-FIX_IMAGE_WIDTH = 144
-FIX_IMAGE_HEIGHT = 288
+FIX_IMAGE_WIDTH = 128
+FIX_IMAGE_HEIGHT = 256
 RGB_CAMERAS = ["cam1", "cam2", "cam4", "cam5"]
 IR_CAMERAS = ["cam3", "cam6"]
+
+RGB_IMG_FILE_NAME = "train_rgb_resized_img_256_128.npy"
+RGB_LABEL_FILE_NAME = "train_rgb_resized_label_256_128.npy"
+IR_IMG_FILE_NAME = "train_ir_resized_img_256_128.npy"
+IR_LABEL_FILE_NAME = "train_ir_resized_label_256_128.npy"
 
 
 def get_args():
@@ -90,13 +95,13 @@ def process_dataset(data_path, output_path):
 
     # RGB
     rgb_imgs, rgb_labels = read_and_resize_images(files_rgb, pid2label)
-    np.save(os.path.join(output_path, "train_rgb_resized_img.npy"), rgb_imgs)
-    np.save(os.path.join(output_path, "train_rgb_resized_label.npy"), rgb_labels)
+    np.save(os.path.join(output_path, RGB_IMG_FILE_NAME), rgb_imgs)
+    np.save(os.path.join(output_path, RGB_LABEL_FILE_NAME), rgb_labels)
 
     # IR
     ir_imgs, ir_labels = read_and_resize_images(files_ir, pid2label)
-    np.save(os.path.join(output_path, "train_ir_resized_img.npy"), ir_imgs)
-    np.save(os.path.join(output_path, "train_ir_resized_label.npy"), ir_labels)
+    np.save(os.path.join(output_path, IR_IMG_FILE_NAME), ir_imgs)
+    np.save(os.path.join(output_path, IR_LABEL_FILE_NAME), ir_labels)
 
     print("处理完成！RGB 图像：{}，IR 图像：{}".format(len(rgb_imgs), len(ir_imgs)))
 

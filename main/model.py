@@ -3,7 +3,7 @@ import copy
 import torch
 import torch.nn as nn
 from gem_pool import GeneralizedMeanPoolingP
-from mamba_dae import VisionMambaModule
+from mamba import VisionMambaModule
 from model_tool import *
 from resnet import resnet50
 from resnet_ibn_a import resnet50_ibn_a
