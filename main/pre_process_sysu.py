@@ -6,15 +6,15 @@ import util
 from PIL import Image
 
 # 固定参数
-FIX_IMAGE_WIDTH = 128
-FIX_IMAGE_HEIGHT = 256
+FIX_IMAGE_WIDTH = 144
+FIX_IMAGE_HEIGHT = 288
 RGB_CAMERAS = ["cam1", "cam2", "cam4", "cam5"]
 IR_CAMERAS = ["cam3", "cam6"]
 
-RGB_IMG_FILE_NAME = "train_rgb_resized_img_256_128.npy"
-RGB_LABEL_FILE_NAME = "train_rgb_resized_label_256_128.npy"
-IR_IMG_FILE_NAME = "train_ir_resized_img_256_128.npy"
-IR_LABEL_FILE_NAME = "train_ir_resized_label_256_128.npy"
+RGB_IMG_FILE_NAME = "train_rgb_resized_img_288_144.npy"
+RGB_LABEL_FILE_NAME = "train_rgb_resized_label_288_144.npy"
+IR_IMG_FILE_NAME = "train_ir_resized_img_288_144.npy"
+IR_LABEL_FILE_NAME = "train_ir_resized_label_288_144.npy"
 
 
 def get_args():

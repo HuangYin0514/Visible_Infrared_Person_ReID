@@ -100,11 +100,11 @@ class Dataset4Sysu_mm01(data.Dataset):
     def __init__(self, data_dir, transform=None, colorIndex=None, thermalIndex=None):
 
         # Load training images (path) and labels
-        color_image = np.load(data_dir + "train_rgb_resized_img_256_128.npy")
-        self.color_label = np.load(data_dir + "train_rgb_resized_label_256_128.npy")
+        color_image = np.load(data_dir + "train_rgb_resized_img_288_144.npy")
+        self.color_label = np.load(data_dir + "train_rgb_resized_label_288_144.npy")
 
-        thermal_image = np.load(data_dir + "train_ir_resized_img_256_128.npy")
-        self.thermal_label = np.load(data_dir + "train_ir_resized_label_256_128.npy")
+        thermal_image = np.load(data_dir + "train_ir_resized_img_288_144.npy")
+        self.thermal_label = np.load(data_dir + "train_ir_resized_label_288_144.npy")
 
         # BGR to RGB
         self.color_image = color_image
