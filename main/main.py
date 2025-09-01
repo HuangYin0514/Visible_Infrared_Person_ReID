@@ -91,7 +91,7 @@ def run(config):
             data_loder.trainset,
             batch_size=loader_batch,
             sampler=sampler,
-            num_workers=4,
+            num_workers=config.DATALOADER.NUM_WORKERS,
             drop_last=True,
         )
 
