@@ -3,7 +3,7 @@ import copy
 import torch
 import torch.nn as nn
 from gem_pool import GeneralizedMeanPoolingP
-from mamba import VisionMambaModule
+from mamba import CrossModalMambaModule
 from model_tool import *
 from resnet import resnet50
 from resnet_ibn_a import resnet50_ibn_a
@@ -145,31 +145,13 @@ class Modal_Interaction(nn.Module):
         super(Modal_Interaction, self).__init__()
         self.c_dim = c_dim
 
-        self.vis_enhance_layer = Mamba_DAE(c_dim)
-        self.inf_enhance_layer = Mamba_DAE(c_dim)
+        self.crossModalMambaModule = CrossModalMambaModule(in_cdim=c_dim, hidden_cdim=96)
 
     def forward(self, vis_feat, inf_feat):
-        vis_feat = self.vis_enhance_layer(vis_feat, inf_feat)
-        inf_feat = self.inf_enhance_layer(inf_feat, vis_feat)
+        vis_info, inf_info = self.crossModalMambaModule(vis_feat, inf_feat)
+        vis_feat = vis_feat + inf_info
+        inf_feat = inf_feat + vis_info
         return vis_feat, inf_feat
-
-
-class Mamba_DAE(nn.Module):
-    def __init__(self, c_dim):
-        super(Mamba_DAE, self).__init__()
-        self.c_dim = c_dim
-
-        self.c1 = nn.Sequential(
-            nn.Conv2d(c_dim, c_dim, 1, 1, 0, bias=False),
-            nn.BatchNorm2d(c_dim),
-            nn.ReLU(),
-        )
-        self.mamba = VisionMambaModule(in_cdim=c_dim, hidden_cdim=96)
-
-    def forward(self, feat, aux_feat):
-        feat = feat + self.mamba(aux_feat)
-        # feat = feat + self.c1(aux_feat)
-        return feat
 
 
 class Modal_Calibration(nn.Module):

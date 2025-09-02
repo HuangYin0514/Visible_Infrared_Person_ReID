@@ -6,35 +6,33 @@ import torch.nn.functional as F
 from einops import einsum, rearrange, repeat
 
 
-class CrossModalMambaModule(nn.Module):
+class VisionMambaModule(nn.Module):
     def __init__(self, in_cdim=2048, hidden_cdim=768):
-        super(CrossModalMambaModule, self).__init__()
+        super(VisionMambaModule, self).__init__()
 
-        self.small_size = (3, 3)
-
-        self.pe = Patch_Embedding(in_cdim=in_cdim, out_cdim=hidden_cdim, small_size=self.small_size)
+        self.pe = Patch_Embedding(in_cdim=in_cdim, out_cdim=hidden_cdim, small_size=(3, 3))
         self.mamba = Mamba(in_cdim=hidden_cdim, out_cdim=in_cdim)
-        self.ipe = Inverse_Patch_Embedding(small_size=self.small_size)
+        self.ipe = Inverse_Patch_Embedding(small_size=(3, 3))
 
-    def forward(self, vis_feat, inf_feat):
-        B, C, H, W = vis_feat.shape
+    def forward(self, x):
+        B, C, H, W = x.shape
+        token_x = self.pe(x)  # [bs, H*W, hidden_cdim]
+        output = self.mamba(token_x)  # [bs, H*W, in_cdim]
+        output = self.ipe(output, H, W)  # [bs, in_cdim, H, W]
+        return output
 
-        vis_token = self.pe(vis_feat)  # [bs, H*W, hidden_cdim]
-        inf_token = self.pe(inf_feat)  # [bs, H*W, hidden_cdim]
 
-        # 按交替顺序合并
-        alternating_token = torch.stack([vis_token, inf_token], dim=2)  # [bs, hw, 2, c]
-        alternating_token = alternating_token.reshape(B, self.small_size[0] * self.small_size[1] * 2, -1)  # [bs, 2*hw, c]
+class Inverse_Patch_Embedding(nn.Module):
 
-        output = self.mamba(alternating_token)  # [bs, 2*H*W, in_cdim]
+    def __init__(self, small_size=(3, 3)):
+        super(Inverse_Patch_Embedding, self).__init__()
 
-        # merged: [bs, 2*hw, c]
-        vis_recover = output[:, 0::2, :]  # 偶数索引位置
-        inf_recover = output[:, 1::2, :]  # 奇数索引位置
+        self.small_size = small_size
 
-        vis_recover = self.ipe(vis_recover, H, W)  # [bs, in_cdim, H, W]
-        inf_recover = self.ipe(inf_recover, H, W)  # [bs, in_cdim, H, W]
-        return vis_recover, inf_recover
+    def forward(self, x, h, w):
+        out = rearrange(x, "b (h w) c -> b c h w", h=self.small_size[0], w=self.small_size[1])
+        out = F.interpolate(out, size=(h, w), mode="bilinear", align_corners=False)
+        return out
 
 
 class Patch_Embedding(nn.Module):
@@ -49,19 +47,6 @@ class Patch_Embedding(nn.Module):
         x = rearrange(x, "b c h w -> b (h w) c")
         x = self.proj(x)
         return x
-
-
-class Inverse_Patch_Embedding(nn.Module):
-
-    def __init__(self, small_size=(3, 3)):
-        super(Inverse_Patch_Embedding, self).__init__()
-
-        self.small_size = small_size
-
-    def forward(self, x, h, w):
-        out = rearrange(x, "b (h w) c -> b c h w", h=self.small_size[0], w=self.small_size[1])
-        out = F.interpolate(out, size=(h, w), mode="bilinear", align_corners=False)
-        return out
 
 
 class Mamba(nn.Module):
@@ -184,16 +169,14 @@ class SSM(nn.Module):
 if __name__ == "__main__":
 
     # 创建输入数据
-    inp_1 = torch.randn(2, 2048, 18, 9)
-    inp_2 = torch.randn(2, 2048, 18, 9)
-    print("input.shape", inp_1.shape)
+    inputs = torch.randn(2, 2048, 18, 9)
+    print("input.shape", inputs.shape)
 
     # # 初始化模型
-    model = CrossModalMambaModule(in_cdim=2048, hidden_cdim=96)
+    model = VisionMambaModule(in_cdim=2048, hidden_cdim=96)
 
     # # 前向传播
-    outputs = model(inp_1, inp_2)
+    outputs = model(inputs)
 
     # # # 打印输出形状
-    for output in outputs:
-        print(output.shape)
+    print(outputs.shape)
