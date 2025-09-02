@@ -6,63 +6,6 @@ import torch.nn.functional as F
 from einops import einsum, rearrange, repeat
 
 
-class CrossModalMambaModule(nn.Module):
-    def __init__(self, in_cdim=2048, hidden_cdim=768):
-        super(CrossModalMambaModule, self).__init__()
-
-        d_inner = hidden_cdim * 2
-        d_proj = d_inner * 2
-
-        self.pool_size = (3, 3)
-        self.pool = nn.AdaptiveAvgPool2d(self.pool_size)
-
-        self.in_proj = nn.Conv2d(in_cdim, d_proj, 1, 1)
-        self.ssm = drqssm(d_model=hidden_cdim)
-        self.out_proj = nn.Conv2d(d_inner, in_cdim, 1, 1)
-        self.act = nn.SiLU()
-
-    def forward(self, vis_feat):
-        B, C, H, W = vis_feat.shape
-        vis_feat = self.pool(vis_feat)  # [B, C, H, W] -> [B, C, size[0], size[1]]
-
-        xz = self.in_proj(vis_feat)
-        x, z = xz.chunk(2, dim=1)
-        b3, c3, h3, w3 = x.shape
-        ssm_out = self.ssm(x.flatten(2))
-        ssm_out = rearrange(ssm_out, "b (h w) c -> b c h w", h=h3, w=w3)
-        out = ssm_out * self.act(z)
-        out = self.out_proj(out)
-
-        out = F.interpolate(out, size=(H, W), mode="bilinear", align_corners=False)
-        return out
-
-
-class Patch_Embedding(nn.Module):
-
-    def __init__(self, in_cdim=3, out_cdim=768, small_size=(3, 3)):
-        super(Patch_Embedding, self).__init__()
-        self.proj = nn.Conv2d(in_cdim, out_cdim, kernel_size=1, stride=1, padding=0)
-
-    def forward(self, x):
-        x = self.pool(x)  # [B, C, H, W] -> [B, C, size[0], size[1]]
-        x = self.proj(x)
-        x = rearrange(x, "b c h w -> b c (h w)")
-        return x
-
-
-class Inverse_Patch_Embedding(nn.Module):
-
-    def __init__(self, small_size=(3, 3)):
-        super(Inverse_Patch_Embedding, self).__init__()
-
-        self.small_size = small_size
-
-    def forward(self, x, h, w):
-        out = rearrange(x, "b (h w) c -> b c h w", h=self.small_size[0], w=self.small_size[1])
-        out = F.interpolate(out, size=(h, w), mode="bilinear", align_corners=False)
-        return out
-
-
 # pytorch cross scan =============
 def l1norm(X, dim, eps=1e-8):
     """L1-normalize columns of X"""
@@ -307,18 +250,10 @@ class Pyramidmamba(nn.Module):
 
 if __name__ == "__main__":
 
-    # 创建输入数据
-    inp_1 = torch.randn(2, 2048, 18, 9)
-    inp_2 = torch.randn(2, 2048, 18, 9)
-    print("input.shape", inp_1.shape)
-
-    # # 初始化模型
-    model = CrossModalMambaModule(in_cdim=2048, hidden_cdim=96)
-
-    # # 前向传播
-    outputs = model(inp_1)
-
-    # # # 打印输出形状
-    # for output in outputs:
-    #     print(output.shape)
-    print(outputs.shape)
+    x = torch.rand(2, 512, 8, 8)
+    # sf  = torch.rand(2, 17, 128).cuda()
+    model = Pyramidmamba()
+    y = model(x)
+    print(y.shape)
+    n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print("参数量", n_parameters / 1000000)

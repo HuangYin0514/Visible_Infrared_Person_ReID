@@ -1,66 +1,20 @@
-import math
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision
+
+# from newmodel1.model_semantic_auxiliary import drqssm
+# from model_semantic_auxiliary import drqssm
 from einops import einsum, rearrange, repeat
+from timm.models.layers import DropPath
 
+"""
+使用金字塔mamba捕捉全局信息
+"""
 
-class CrossModalMambaModule(nn.Module):
-    def __init__(self, in_cdim=2048, hidden_cdim=768):
-        super(CrossModalMambaModule, self).__init__()
+import math
 
-        d_inner = hidden_cdim * 2
-        d_proj = d_inner * 2
-
-        self.pool_size = (3, 3)
-        self.pool = nn.AdaptiveAvgPool2d(self.pool_size)
-
-        self.in_proj = nn.Conv2d(in_cdim, d_proj, 1, 1)
-        self.ssm = drqssm(d_model=hidden_cdim)
-        self.out_proj = nn.Conv2d(d_inner, in_cdim, 1, 1)
-        self.act = nn.SiLU()
-
-    def forward(self, vis_feat):
-        B, C, H, W = vis_feat.shape
-        vis_feat = self.pool(vis_feat)  # [B, C, H, W] -> [B, C, size[0], size[1]]
-
-        xz = self.in_proj(vis_feat)
-        x, z = xz.chunk(2, dim=1)
-        b3, c3, h3, w3 = x.shape
-        ssm_out = self.ssm(x.flatten(2))
-        ssm_out = rearrange(ssm_out, "b (h w) c -> b c h w", h=h3, w=w3)
-        out = ssm_out * self.act(z)
-        out = self.out_proj(out)
-
-        out = F.interpolate(out, size=(H, W), mode="bilinear", align_corners=False)
-        return out
-
-
-class Patch_Embedding(nn.Module):
-
-    def __init__(self, in_cdim=3, out_cdim=768, small_size=(3, 3)):
-        super(Patch_Embedding, self).__init__()
-        self.proj = nn.Conv2d(in_cdim, out_cdim, kernel_size=1, stride=1, padding=0)
-
-    def forward(self, x):
-        x = self.pool(x)  # [B, C, H, W] -> [B, C, size[0], size[1]]
-        x = self.proj(x)
-        x = rearrange(x, "b c h w -> b c (h w)")
-        return x
-
-
-class Inverse_Patch_Embedding(nn.Module):
-
-    def __init__(self, small_size=(3, 3)):
-        super(Inverse_Patch_Embedding, self).__init__()
-
-        self.small_size = small_size
-
-    def forward(self, x, h, w):
-        out = rearrange(x, "b (h w) c -> b c h w", h=self.small_size[0], w=self.small_size[1])
-        out = F.interpolate(out, size=(h, w), mode="bilinear", align_corners=False)
-        return out
+import torch.nn.functional as F
 
 
 # pytorch cross scan =============
@@ -69,49 +23,6 @@ def l1norm(X, dim, eps=1e-8):
     norm = torch.abs(X).sum(dim=dim, keepdim=True) + eps
     X = torch.div(X, norm)
     return X
-
-
-def cross_selective_scan(
-    x: torch.Tensor = None,
-    x_proj_weight: torch.Tensor = None,
-    dt_projs_weight: torch.Tensor = None,
-    dt_projs_bias: torch.Tensor = None,
-    A_logs: torch.Tensor = None,
-    Ds: torch.Tensor = None,
-    delta_softplus=True,
-    out_norm: torch.nn.Module = None,
-    # ==============================
-    to_dtype=True,  # True: final out to dtype
-):
-    # out_norm: whatever fits (B, L, C); LayerNorm; Sigmoid; Softmax(dim=1);...
-    B, D, L = x.shape
-    D, N = A_logs.shape
-    D, R = dt_projs_weight.shape
-
-    x_dbl = F.linear(rearrange(x, "b d l -> (b l) d"), x_proj_weight)
-
-    dts, Bs, Cs = torch.split(x_dbl, [R, N, N], dim=-1)
-    dts = dt_projs_weight @ dts.t()
-    dts = rearrange(dts, "d (b l) -> b l d", l=L)
-    Bs = rearrange(Bs, "(b l) dstate -> b dstate l", l=L).contiguous()
-    Cs = rearrange(Cs, "(b l) dstate -> b dstate l", l=L).contiguous()
-    As = -torch.exp(A_logs.to(torch.float))  # (k * c, d_state)
-    Ds = Ds.to(torch.float)  # (K * c)
-
-    # # Step 1: Discretize continuous parameters (A, B)
-    delta_A = torch.exp(einsum(dts, As, "B L D, D dstate -> B L D dstate"))
-    delta_B_x = einsum(dts, Bs, x, "B L D, B dstate L, B D L-> B L D dstate")
-
-    u = torch.zeros((B, D, N), device=delta_A.device)
-    ys = []
-    for i in range(L):
-        u = delta_A[:, i] * u + delta_B_x[:, i]
-        y = einsum(u, Cs[:, :, i], "B D dstate, B dstate -> B D")
-        ys.append(y)
-    y = torch.stack(ys, dim=1)  # [B, L, D]
-    y = y + einsum(x, Ds, "B D L, D -> B L D")  # [B, L, D]
-    y = out_norm(y)
-    return y.to(x.dtype) if to_dtype else y
 
 
 class drqssm(nn.Module):
@@ -216,17 +127,24 @@ class drqssm(nn.Module):
         D._no_weight_decay = True
         return D
 
-    def forward_core(self, x: torch.Tensor, cross_selective_scan=cross_selective_scan):
-        return cross_selective_scan(
-            x,
-            self.x_proj.weight,
-            self.dt_projs.weight,
-            self.dt_projs.bias.float(),
-            self.A_logs,
-            self.Ds,
-            delta_softplus=True,
-            out_norm=self.out_norm,
-        )
+    def forward_core(self, u: torch.Tensor):
+        B, L, D = u.shape
+
+        # Step 1: Discretize continuous parameters (A, B)
+        delta_A = torch.exp(einsum(delta_parameter, A_parameter, "B L D, D state_dim -> B L D state_dim"))
+        delta_B_u = einsum(delta_parameter, B_parameter, u, "B L D, B L state_dim, B L D -> B L D state_dim")
+
+        x = torch.zeros((B, D, self.state_dim), device=delta_A.device)
+        ys = []
+        for i in range(L):
+            x = delta_A[:, i] * x + delta_B_u[:, i]
+            y = einsum(x, C_parameter[:, i, :], "B D state_dim, B state_dim -> B D")
+            ys.append(y)
+        y = torch.stack(ys, dim=1)  # [B, L, D]
+
+        y = y + u * D_parameter  # [B, L, D]
+
+        return y
 
     def forward(self, x: torch.Tensor, **kwargs):
 
@@ -307,18 +225,10 @@ class Pyramidmamba(nn.Module):
 
 if __name__ == "__main__":
 
-    # 创建输入数据
-    inp_1 = torch.randn(2, 2048, 18, 9)
-    inp_2 = torch.randn(2, 2048, 18, 9)
-    print("input.shape", inp_1.shape)
-
-    # # 初始化模型
-    model = CrossModalMambaModule(in_cdim=2048, hidden_cdim=96)
-
-    # # 前向传播
-    outputs = model(inp_1)
-
-    # # # 打印输出形状
-    # for output in outputs:
-    #     print(output.shape)
-    print(outputs.shape)
+    x = torch.rand(2, 512, 8, 8).cuda()
+    # sf  = torch.rand(2, 17, 128).cuda()
+    model = Pyramidmamba().cuda()
+    y = model(x)
+    print(y.shape)
+    n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print("参数量", n_parameters / 1000000)

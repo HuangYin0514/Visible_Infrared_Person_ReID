@@ -145,12 +145,12 @@ class Modal_Interaction(nn.Module):
         super(Modal_Interaction, self).__init__()
         self.c_dim = c_dim
 
-        self.crossModalMambaModule = CrossModalMambaModule(in_cdim=c_dim, hidden_cdim=96)
+        self.crossModalMambaModule_1 = CrossModalMambaModule(in_cdim=c_dim, hidden_cdim=96)
+        self.crossModalMambaModule_2 = CrossModalMambaModule(in_cdim=c_dim, hidden_cdim=96)
 
     def forward(self, vis_feat, inf_feat):
-        vis_info, inf_info = self.crossModalMambaModule(vis_feat, inf_feat)
-        vis_feat = vis_feat + inf_info
-        inf_feat = inf_feat + vis_info
+        vis_feat = vis_feat + self.crossModalMambaModule_1(vis_feat)
+        inf_feat = inf_feat + self.crossModalMambaModule_1(inf_feat)
         return vis_feat, inf_feat
 
 
