@@ -35,6 +35,10 @@ class ReIDNet(nn.Module):
         self.modal_propagation_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
         self.modal_propagation = DistillKL(T=4)
 
+        # ------------- weights init -----------------------
+        self.modal_interaction.apply(weights_init_kaiming)
+        self.modal_calibration.apply(weights_init_kaiming)
+
     def forward(self, x_vis, x_inf, modal):
         backbone_feature_map = self.backbone(x_vis, x_inf, modal)
 
