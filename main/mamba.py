@@ -17,6 +17,58 @@ class CrossModalMambaModule(nn.Module):
         self.pool = nn.AdaptiveAvgPool2d(self.pool_size)
 
         self.in_proj = nn.Conv2d(in_cdim, d_proj, 1, 1)
+        self.ssm = drqssm(d_model=hidden_cdim * 2)
+        self.out_proj = nn.Conv2d(d_inner, in_cdim, 1, 1)
+        self.act = nn.SiLU()
+
+    def forward(self, vis_feat, inf_feat):
+        B, C, H, W = vis_feat.shape
+        vis_feat = self.pool(vis_feat)  # [B, C, H, W] -> [B, C, size[0], size[1]]
+        inf_feat = self.pool(inf_feat)
+
+        # Vis branch
+        vis_xz = self.in_proj(vis_feat)  # [B, C, H, W] -> [B, hidden_cdim*2*2, H, W]
+        vis_x, vis_z = vis_xz.chunk(2, dim=1)  # [B, hidden_cdim*2, H, W],[B, hidden_cdim*2, H, W]
+
+        # Inf branch
+        inf_xz = self.in_proj(inf_feat)
+        inf_x, inf_z = inf_xz.chunk(2, dim=1)
+
+        # Cross modal branch
+        modal_x = torch.stack([vis_x, inf_x], dim=2)  # [B, hidden_cdim*2*2, 2, H, W]
+        modal_x = rearrange(modal_x, "B hidden s2 H W -> B (hidden s2) H W")
+
+        B, C_token, H_token, W_token = modal_x.shape
+        ssm_out = self.ssm(modal_x.flatten(2))  # [B, C, H, W] -> [B, C, H*W] -> [B, H*W, C]
+        ssm_out = rearrange(ssm_out, "b (h w) c -> b c h w", h=H_token, w=W_token)
+
+        vis_ssm_out = ssm_out[:, 0::2, :, :]  # [B, hidden_cdim*2, H, W]
+        inf_ssm_out = ssm_out[:, 1::2, :, :]  # [B, hidden_cdim*2, H, W]
+
+        # Merge
+        vis_out = vis_ssm_out * self.act(vis_z)
+        inf_out = inf_ssm_out * self.act(inf_z)
+
+        vis_out = self.out_proj(vis_out)
+        inf_out = self.out_proj(inf_out)
+
+        vis_feat_hat = F.interpolate(vis_out, size=(H, W), mode="bilinear", align_corners=False)
+        inf_feat_hat = F.interpolate(inf_out, size=(H, W), mode="bilinear", align_corners=False)
+
+        return vis_feat_hat, inf_feat_hat
+
+
+class CrossModalMambaModule_20250903(nn.Module):
+    def __init__(self, in_cdim=2048, hidden_cdim=768):
+        super(CrossModalMambaModule, self).__init__()
+
+        d_inner = hidden_cdim * 2
+        d_proj = d_inner * 2
+
+        self.pool_size = (3, 3)
+        self.pool = nn.AdaptiveAvgPool2d(self.pool_size)
+
+        self.in_proj = nn.Conv2d(in_cdim, d_proj, 1, 1)
         self.ssm = drqssm(d_model=hidden_cdim)
         self.out_proj = nn.Conv2d(d_inner, in_cdim, 1, 1)
         self.act = nn.SiLU()
@@ -209,9 +261,9 @@ if __name__ == "__main__":
     model = CrossModalMambaModule(in_cdim=2048, hidden_cdim=96)
 
     # # 前向传播
-    outputs = model(inp_1)
+    outputs = model(inp_1, inp_2)
 
     # # # 打印输出形状
-    # for output in outputs:
-    #     print(output.shape)
-    print(outputs.shape)
+    for output in outputs:
+        print(output.shape)
+    # print(outputs.shape)
