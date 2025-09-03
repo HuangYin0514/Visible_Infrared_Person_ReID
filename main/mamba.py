@@ -75,7 +75,6 @@ def cross_selective_scan(
         y = einsum(u, Cs[:, :, i], "B D dstate, B dstate -> B D")
         ys.append(y)
     y = torch.stack(ys, dim=1)  # [B, L, D]
-    y = y + einsum(x, Ds, "B D L, D -> B L D")  # [B, L, D]
     y = out_norm(y)
     return y.to(x.dtype)
 
