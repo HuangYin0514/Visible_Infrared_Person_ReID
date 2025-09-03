@@ -146,7 +146,7 @@ def run(config):
                     # intergation
                     modal_fusion_feat_map = (b_vis_feat_map + b_inf_feat_map) / 2
                     modal_fusion_feat = net.modal_propagation_pooling(modal_fusion_feat_map).squeeze()
-                    print(modal_fusion_feat.item())
+                    print(modal_fusion_feat)
                     modal_fusion_bn_feat, modal_fusion_cls_score = net.modal_propagation_classifier(modal_fusion_feat)
                     modal_fusion_pid_loss = criterion.id(modal_fusion_cls_score, vis_labels)
                     total_loss += modal_fusion_pid_loss
