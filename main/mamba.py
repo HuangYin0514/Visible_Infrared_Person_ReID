@@ -37,40 +37,6 @@ class CrossModalMambaModule(nn.Module):
         return out
 
 
-class Patch_Embedding(nn.Module):
-
-    def __init__(self, in_cdim=3, out_cdim=768, small_size=(3, 3)):
-        super(Patch_Embedding, self).__init__()
-        self.proj = nn.Conv2d(in_cdim, out_cdim, kernel_size=1, stride=1, padding=0)
-
-    def forward(self, x):
-        x = self.pool(x)  # [B, C, H, W] -> [B, C, size[0], size[1]]
-        x = self.proj(x)
-        x = rearrange(x, "b c h w -> b c (h w)")
-        return x
-
-
-class Inverse_Patch_Embedding(nn.Module):
-
-    def __init__(self, small_size=(3, 3)):
-        super(Inverse_Patch_Embedding, self).__init__()
-
-        self.small_size = small_size
-
-    def forward(self, x, h, w):
-        out = rearrange(x, "b (h w) c -> b c h w", h=self.small_size[0], w=self.small_size[1])
-        out = F.interpolate(out, size=(h, w), mode="bilinear", align_corners=False)
-        return out
-
-
-# pytorch cross scan =============
-def l1norm(X, dim, eps=1e-8):
-    """L1-normalize columns of X"""
-    norm = torch.abs(X).sum(dim=dim, keepdim=True) + eps
-    X = torch.div(X, norm)
-    return X
-
-
 def cross_selective_scan(
     x: torch.Tensor = None,
     x_proj_weight: torch.Tensor = None,
@@ -111,7 +77,7 @@ def cross_selective_scan(
     y = torch.stack(ys, dim=1)  # [B, L, D]
     y = y + einsum(x, Ds, "B D L, D -> B L D")  # [B, L, D]
     y = out_norm(y)
-    return y.to(x.dtype) if to_dtype else y
+    return y.to(x.dtype)
 
 
 class drqssm(nn.Module):
@@ -233,13 +199,6 @@ class drqssm(nn.Module):
         y = self.forward_core(x)
 
         return y
-
-
-def l1norm(X, dim, eps=1e-8):
-    """L1-normalize columns of X"""
-    norm = torch.abs(X).sum(dim=dim, keepdim=True) + eps
-    X = torch.div(X, norm)
-    return X
 
 
 class Pyramidmamba(nn.Module):
