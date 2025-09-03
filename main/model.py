@@ -151,7 +151,6 @@ class Modal_Interaction(nn.Module):
     def forward(self, vis_feat, inf_feat):
         vis_feat = vis_feat + self.crossModalMambaModule_1(vis_feat)
         inf_feat = inf_feat + self.crossModalMambaModule_1(inf_feat)
-        print(self.crossModalMambaModule_1(vis_feat))
         return vis_feat, inf_feat
 
 
