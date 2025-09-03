@@ -154,6 +154,7 @@ def run(config):
                             "modal_fusion_pid_loss": modal_fusion_pid_loss.item(),
                         }
                     )
+                    print(modal_fusion_pid_loss.item())
 
                     # propagation
                     student_logits = backbone_cls_score
