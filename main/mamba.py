@@ -66,8 +66,8 @@ def cross_selective_scan(
 
     # # Step 1: Discretize continuous parameters (A, B)
     delta_A = torch.exp(einsum(dts, As, "B L D, D dstate -> B L D dstate"))
-    Bs = rearrange(Bs, "(b l) dstate -> b dstate l", l=L)
     delta_B_x = einsum(dts, Bs, x, "B L D, B dstate L, B D L-> B L D dstate")
+    # Bs = rearrange(Bs, "(b l) dstate -> b dstate l", l=L)
     # delta_B_u = einsum(delta_parameter, B_parameter, u, "B L D, B L state_dim, B L D -> B L D state_dim")
 
     u = torch.zeros((B, D, N), device=delta_A.device)
