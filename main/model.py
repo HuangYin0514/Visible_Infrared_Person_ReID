@@ -3,7 +3,7 @@ import copy
 import torch
 import torch.nn as nn
 from gem_pool import GeneralizedMeanPoolingP
-from mamba import CrossModalMambaModule
+from mamba import CrossModalMamba
 from model_tool import *
 from resnet import resnet50
 from resnet_ibn_a import resnet50_ibn_a
@@ -144,13 +144,24 @@ class Modal_Interaction(nn.Module):
     def __init__(self, c_dim):
         super(Modal_Interaction, self).__init__()
         self.c_dim = c_dim
+        r = 4
+        inter_c_dim = int(c_dim // r)
 
-        self.crossModalMambaModule = CrossModalMambaModule(in_cdim=c_dim, hidden_cdim=96)
+        self.MAMBA = CrossModalMamba(in_cdim=c_dim, hidden_cdim=256)
+        self.att = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Conv2d(c_dim, inter_c_dim, kernel_size=1, stride=1, padding=0),
+            nn.BatchNorm2d(inter_c_dim),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(inter_c_dim, c_dim, kernel_size=1, stride=1, padding=0),
+            nn.BatchNorm2d(c_dim),
+        )
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, vis_feat, inf_feat):
-        M_con = self.crossModalMambaModule(vis_feat, inf_feat)
-        vis_feat = vis_feat + inf_feat * M_con
-        inf_feat = inf_feat + vis_feat * M_con
+        vis_mamba_feat, inf_mamba_feat = self.MAMBA(vis_feat, inf_feat)
+        vis_feat = vis_feat + inf_feat * self.sigmoid(self.att(inf_mamba_feat))
+        inf_feat = inf_feat + vis_feat * self.sigmoid(self.att(vis_mamba_feat))
         return vis_feat, inf_feat
 
 
@@ -184,7 +195,6 @@ class Gate_Fusion(nn.Module):
         self.c_dim = c_dim
 
         r = 4
-
         inter_c_dim = int(c_dim // r)
 
         self.att = nn.Sequential(

@@ -6,28 +6,28 @@ import torch.nn.functional as F
 from einops import einsum, rearrange, repeat
 
 
-class CrossModalMambaModule(nn.Module):
+class CrossModalMamba(nn.Module):
     def __init__(self, in_cdim=2048, hidden_cdim=96):
-        super(CrossModalMambaModule, self).__init__()
+        super(CrossModalMamba, self).__init__()
 
         d_inner = hidden_cdim * 2
         d_proj = d_inner * 2
 
-        self.pool_size = (4, 3)
+        self.pool_size = (6, 1)
         self.pool = nn.AdaptiveAvgPool2d(self.pool_size)
 
         # Mamba block
         self.in_proj = nn.Conv2d(in_cdim * 2, d_proj, 1, 1)
         self.ssm = drqssm(d_model=hidden_cdim)
         self.act = nn.SiLU()
-        # self.out_proj = nn.Conv2d(d_inner, in_cdim, 1, 1)
+        self.out_proj = nn.Conv2d(d_inner, in_cdim * 2, 1, 1)
 
-        self.out_pool = nn.AdaptiveAvgPool2d(1)
-        self.out_proj = nn.Conv2d(d_inner, in_cdim, 1, 1)
-        self.sigmoid = nn.Sigmoid()
+        self.drop_path = DropPath(0.5)
 
     def forward(self, vis_feat, inf_feat):
         B, C, H, W = vis_feat.shape
+        vis_feat_skip = vis_feat
+        inf_feat_skip = inf_feat
         vis_feat = self.pool(vis_feat)  # [B, C, H, W] -> [B, C, size[0], size[1]]
         inf_feat = self.pool(inf_feat)
 
@@ -41,22 +41,67 @@ class CrossModalMambaModule(nn.Module):
         ssm_out = self.ssm(mamba_x.flatten(2))  # [B, C, H, W] -> [B, C, H*W] -> [B, H*W, C]
         ssm_out = rearrange(ssm_out, "b (h w) c -> b c h w", h=H_token, w=W_token)
         ssm_out = ssm_out * self.act(mamba_z)
+        ssm_out = self.out_proj(ssm_out)
+        vis_out = ssm_out[:, 0::2]
+        inf_out = ssm_out[:, 1::2]
+        vis_out = F.interpolate(vis_out, size=(H, W), mode="bilinear", align_corners=False)
+        inf_out = F.interpolate(inf_out, size=(H, W), mode="bilinear", align_corners=False)
+        return self.drop_path(vis_out) + vis_feat_skip, self.drop_path(inf_out) + inf_feat_skip
 
-        M_con = self.out_proj(self.out_pool(ssm_out))
-        # M_con = rearrange(M_con, "b (c d)-> b c d", c=C)
-        # M_con = M_con.view(B, C, C)
-        M_con = self.sigmoid(M_con)
-        return M_con
+
+####################################################################################
+# class CrossModalMamba(nn.Module):
+#     def __init__(self, in_cdim=2048, hidden_cdim=96):
+#         super(CrossModalMamba, self).__init__()
+
+#         d_inner = hidden_cdim * 2
+#         d_proj = d_inner * 2
+
+#         self.pool_size = (6, 1)
+#         self.pool = nn.AdaptiveAvgPool2d(self.pool_size)
+
+#         # Mamba block
+#         self.in_proj = nn.Conv2d(in_cdim * 2, d_proj, 1, 1)
+#         self.ssm = drqssm(d_model=hidden_cdim)
+#         self.act = nn.SiLU()
+#         # self.out_proj = nn.Conv2d(d_inner, in_cdim, 1, 1)
+
+#         self.out_pool = nn.AdaptiveAvgPool2d(1)
+#         self.out_proj = nn.Conv2d(d_inner, in_cdim, 1, 1)
+#         self.sigmoid = nn.Sigmoid()
+
+#     def forward(self, vis_feat, inf_feat):
+#         B, C, H, W = vis_feat.shape
+#         vis_feat = self.pool(vis_feat)  # [B, C, H, W] -> [B, C, size[0], size[1]]
+#         inf_feat = self.pool(inf_feat)
+
+#         modal_x = torch.stack([vis_feat, inf_feat], dim=2)  # [B, C, 2, H, W]
+#         modal_x = rearrange(modal_x, "B hidden s2 H W -> B (hidden s2) H W")  # # [B, C*2, H, W]
+
+#         # mamba block
+#         mamba_xz = self.in_proj(modal_x)  # [B, C, H, W] -> [B, hidden_cdim*2*2, H, W]
+#         mamba_x, mamba_z = mamba_xz.chunk(2, dim=1)  # [B, hidden_cdim*2, H, W],[B, hidden_cdim*2, H, W]
+#         B, C_token, H_token, W_token = modal_x.shape
+#         ssm_out = self.ssm(mamba_x.flatten(2))  # [B, C, H, W] -> [B, C, H*W] -> [B, H*W, C]
+#         ssm_out = rearrange(ssm_out, "b (h w) c -> b c h w", h=H_token, w=W_token)
+#         ssm_out = ssm_out * self.act(mamba_z)
+
+#         M_con = self.out_proj(self.out_pool(ssm_out))
+#         # M_con = rearrange(M_con, "b (c d)-> b c d", c=C)
+#         # M_con = M_con.view(B, C, C)
+#         M_con = self.sigmoid(M_con)
+#         return M_con
 
 
-class CrossModalMambaModule_20250903(nn.Module):
+####################################################################################
+class MAMBA(nn.Module):
     def __init__(self, in_cdim=2048, hidden_cdim=768):
-        super(CrossModalMambaModule, self).__init__()
+        super(MAMBA, self).__init__()
 
         d_inner = hidden_cdim * 2
         d_proj = d_inner * 2
 
-        self.pool_size = (3, 3)
+        self.pool_size = (6, 1)
         self.pool = nn.AdaptiveAvgPool2d(self.pool_size)
 
         self.in_proj = nn.Conv2d(in_cdim, d_proj, 1, 1)
@@ -64,20 +109,82 @@ class CrossModalMambaModule_20250903(nn.Module):
         self.out_proj = nn.Conv2d(d_inner, in_cdim, 1, 1)
         self.act = nn.SiLU()
 
-    def forward(self, vis_feat):
-        B, C, H, W = vis_feat.shape
-        vis_feat = self.pool(vis_feat)  # [B, C, H, W] -> [B, C, size[0], size[1]]
+    def forward(self, feat):
+        B, C, H, W = feat.shape
+        skip = feat
+        feat = self.pool(feat)  # [B, C, H, W] -> [B, C, size[0], size[1]]
 
-        xz = self.in_proj(vis_feat)
+        xz = self.in_proj(feat)
         x, z = xz.chunk(2, dim=1)
-        b3, c3, h3, w3 = x.shape
+        b, c, h, w = x.shape
         ssm_out = self.ssm(x.flatten(2))  # [B, C, H, W] -> [B, C, H*W] -> [B, H*W, C]
-        ssm_out = rearrange(ssm_out, "b (h w) c -> b c h w", h=h3, w=w3)
+        ssm_out = rearrange(ssm_out, "b (h w) c -> b c h w", h=h, w=w)
         out = ssm_out * self.act(z)
         out = self.out_proj(out)
-
         out = F.interpolate(out, size=(H, W), mode="bilinear", align_corners=False)
         return out
+
+
+####################################################################################
+
+
+# class MAMBA(nn.Module):
+#     def __init__(self, in_cdim=2048, hidden_cdim=768):
+#         super(MAMBA, self).__init__()
+
+#         d_inner = hidden_cdim * 2
+#         d_proj = d_inner * 2
+
+#         self.pool_size = (6, 1)
+#         self.pool = nn.AdaptiveAvgPool2d(self.pool_size)
+
+#         self.in_proj = nn.Conv2d(in_cdim, d_proj, 1, 1)
+#         self.ssm = drqssm(d_model=hidden_cdim)
+#         self.out_proj = nn.Conv2d(d_inner, in_cdim, 1, 1)
+#         self.act = nn.SiLU()
+
+#     def forward(self, feat):
+#         B, C, H, W = feat.shape
+#         feat = self.pool(feat)  # [B, C, H, W] -> [B, C, size[0], size[1]]
+
+#         xz = self.in_proj(feat)
+#         x, z = xz.chunk(2, dim=1)
+#         b, c, h, w = x.shape
+#         ssm_out = self.ssm(x.flatten(2))  # [B, C, H, W] -> [B, C, H*W] -> [B, H*W, C]
+#         ssm_out = rearrange(ssm_out, "b (h w) c -> b c h w", h=h, w=w)
+#         out = self.out_proj(ssm_out)
+#         out = F.interpolate(out, size=(H, W), mode="bilinear", align_corners=False)
+#         return out
+
+
+#############################################################
+def drop_path(x, drop_prob: float = 0.0, training: bool = False):
+    if drop_prob == 0.0 or not training:
+        return x
+    keep_prob = 1 - drop_prob
+    shape = (x.shape[0],) + (1,) * (x.ndim - 1)  # work with diff dim tensors, not just 2D ConvNets
+    random_tensor = keep_prob + torch.rand(shape, dtype=x.dtype, device=x.device)
+    random_tensor.floor_()  # binarize
+    output = x.div(keep_prob) * random_tensor
+    return output
+
+
+class DropPath(nn.Module):
+    """https://github.com/hu-xh/CPNet/blob/main/models/CPNet.py#L231
+    DropPath (Stochastic Depth) 实现：
+    - 类似 Dropout，但不是随机丢弃单个神经元，而是随机丢弃整个残差分支。
+    - 训练时：每个样本的残差分支要么全部保留，要么整体置零。
+    - 推理时：不做丢弃，保持完整。
+
+    self.drop_path = DropPath(drop_rate) if drop_rate > 0. else nn.Identity()
+    """
+
+    def __init__(self, drop_prob=None):
+        super(DropPath, self).__init__()
+        self.drop_prob = drop_prob
+
+    def forward(self, x):
+        return drop_path(x, self.drop_prob, self.training)
 
 
 def cross_selective_scan(
@@ -245,11 +352,19 @@ if __name__ == "__main__":
 
     # 创建输入数据
     inp_1 = torch.randn(2, 2048, 18, 9)
+    print("input.shape", inp_1.shape)
+
+    model = MAMBA(in_cdim=2048, hidden_cdim=256)
+    outputs = model(inp_1)
+    print(outputs.shape)
+
+    # # 创建输入数据
+    inp_1 = torch.randn(2, 2048, 18, 9)
     inp_2 = torch.randn(2, 2048, 18, 9)
     print("input.shape", inp_1.shape)
 
     # # 初始化模型
-    model = CrossModalMambaModule(in_cdim=2048, hidden_cdim=96)
+    model = CrossModalMamba(in_cdim=2048, hidden_cdim=96)
 
     # # 前向传播
     outputs = model(inp_1, inp_2)
@@ -257,4 +372,3 @@ if __name__ == "__main__":
     # # # 打印输出形状
     for output in outputs:
         print(output.shape)
-    # print(outputs.shape)
