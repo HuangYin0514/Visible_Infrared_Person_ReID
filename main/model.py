@@ -143,7 +143,7 @@ class Backbone(nn.Module):
 class Modal_Interaction(nn.Module):
     def __init__(self, c_dim):
         super(Modal_Interaction, self).__init__()
-        self.MAMBA = CrossModalMamba(in_cdim=c_dim, hidden_cdim=128)
+        self.MAMBA = CrossModalMamba(in_cdim=c_dim, hidden_cdim=512)
         self.vis_weight = nn.Parameter(torch.tensor(0.001))
         self.inf_weight = nn.Parameter(torch.tensor(0.001))
 
