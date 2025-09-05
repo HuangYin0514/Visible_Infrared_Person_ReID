@@ -143,25 +143,14 @@ class Backbone(nn.Module):
 class Modal_Interaction(nn.Module):
     def __init__(self, c_dim):
         super(Modal_Interaction, self).__init__()
-        self.c_dim = c_dim
-        r = 4
-        inter_c_dim = int(c_dim // r)
-
-        self.MAMBA = CrossModalMamba(in_cdim=c_dim, hidden_cdim=256)
-        # self.att = nn.Sequential(
-        #     nn.AdaptiveAvgPool2d(1),
-        #     nn.Conv2d(c_dim, inter_c_dim, kernel_size=1, stride=1, padding=0),
-        #     nn.BatchNorm2d(inter_c_dim),
-        #     nn.ReLU(inplace=True),
-        #     nn.Conv2d(inter_c_dim, c_dim, kernel_size=1, stride=1, padding=0),
-        #     nn.BatchNorm2d(c_dim),
-        # )
-        # self.sigmoid = nn.Sigmoid()
+        self.MAMBA = CrossModalMamba(in_cdim=c_dim, hidden_cdim=128)
+        self.vis_weight = nn.Parameter(torch.tensor(0.001))
+        self.inf_weight = nn.Parameter(torch.tensor(0.001))
 
     def forward(self, vis_feat, inf_feat):
         vis_mamba_feat, inf_mamba_feat = self.MAMBA(vis_feat, inf_feat)
-        vis_feat = vis_feat + inf_feat * inf_mamba_feat
-        inf_feat = inf_feat + vis_feat * vis_mamba_feat
+        vis_feat = vis_feat + self.vis_weight * inf_feat * inf_mamba_feat
+        inf_feat = inf_feat + self.inf_weight * vis_feat * vis_mamba_feat
         return vis_feat, inf_feat
 
 
