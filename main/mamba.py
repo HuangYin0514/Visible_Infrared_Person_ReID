@@ -20,9 +20,9 @@ class CrossModalMamba(nn.Module):
         self.in_proj = nn.Conv2d(in_cdim * 2, d_proj, 1, 1)
         self.ssm = drqssm(d_model=hidden_cdim)
         self.act = nn.SiLU()
-        # self.out_proj = nn.Conv2d(d_inner, in_cdim * 2, 1, 1)
+        self.out_proj = nn.Conv2d(d_inner, in_cdim * 2, 1, 1)
 
-        self.cat_proj = nn.Conv2d(hidden_cdim * 6, in_cdim, 1, 1)
+        self.cat_proj = nn.Conv2d(in_cdim * 6, in_cdim, 1, 1)
         self.sigmoid = nn.Sigmoid()
         self.drop_path = DropPath(0.5)
 
@@ -43,16 +43,18 @@ class CrossModalMamba(nn.Module):
         ssm_out = self.ssm(mamba_x.flatten(2))  # [B, C, H, W] -> [B, C, H*W] -> [B, H*W, C]
         ssm_out = rearrange(ssm_out, "b (h w) c -> b c h w", h=H_token, w=W_token)
         ssm_out = ssm_out * self.act(mamba_z)
-        # ssm_out = self.out_proj(ssm_out)
+        ssm_out = self.out_proj(ssm_out)
         vis_out = ssm_out[:, 0::2]
         inf_out = ssm_out[:, 1::2]
         # vis_out = F.interpolate(vis_out, size=(H, W), mode="bilinear", align_corners=False)
         # inf_out = F.interpolate(inf_out, size=(H, W), mode="bilinear", align_corners=False)
         # vis_out, inf_out = self.drop_path(vis_out) + vis_feat_skip, self.drop_path(inf_out) + inf_feat_skip
-        vis_cat_out = rearrange(vis_out, "b c h w -> b (c h) w").unsqueeze(-1)
-        inf_cat_out = rearrange(inf_out, "b c h w -> b (c h) w").unsqueeze(-1)
-        vis_att = self.sigmoid(self.cat_proj(vis_cat_out))
-        inf_att = self.sigmoid(self.cat_proj(inf_cat_out))
+        vis_out = self.drop_path(vis_out) + vis_feat
+        inf_out = self.drop_path(inf_out) + inf_feat
+        vis_cat_out = vis_out.reshape(B, -1, 1, 1)
+        inf_cat_out = inf_out.reshape(B, -1, 1, 1)
+        vis_att = self.sigmoid(self.drop_path(self.cat_proj(vis_cat_out)))
+        inf_att = self.sigmoid(self.drop_path(self.cat_proj(inf_cat_out)))
         return vis_att, inf_att
 
 
