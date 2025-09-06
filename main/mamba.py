@@ -27,7 +27,7 @@ class CrossModalMamba(nn.Module):
         self.act = nn.SiLU()
         self.out_proj = nn.Conv2d(d_inner, in_cdim * cross_modal_ratio, 1, 1)
 
-        self.cat_proj = nn.Conv2d(in_cdim * part_num, in_cdim, 1, 1)
+        self.cat_proj = nn.Conv2d(hidden_cdim * part_num, in_cdim, 1, 1)
         self.sigmoid = nn.Sigmoid()
         self.drop_path = DropPath(0.5)
 
@@ -37,9 +37,9 @@ class CrossModalMamba(nn.Module):
         mamba_x, mamba_z = mamba_xz.chunk(2, dim=1)
         ssm_out = self.ssm(mamba_x.flatten(2))  # [B, d_inner, H_token, W_token]
         ssm_out = rearrange(ssm_out, "b (h w) c -> b c h w", h=H_token, w=W_token)
-        ssm_out = ssm_out * self.act(mamba_z)  # [B,  d_inner, H_token, W_token]
-        ssm_out = self.out_proj(ssm_out)  # [B,  in_cdim*cross_modal_ratio, H_token, W_token]
-        ssm_out = self.drop_path(ssm_out) + token
+        # ssm_out = ssm_out * self.act(mamba_z)  # [B,  d_inner, H_token, W_token]
+        # ssm_out = self.out_proj(ssm_out)  # [B,  in_cdim*cross_modal_ratio, H_token, W_token]
+        # ssm_out = self.drop_path(ssm_out) + token
         return ssm_out  # [B, in_cdim*cross_modal_ratio, H_token, W_token]
 
     def forward(self, vis_feat, inf_feat):
