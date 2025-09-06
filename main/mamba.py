@@ -17,6 +17,7 @@ class CrossModalMamba(nn.Module):
 
         cross_modal_ratio = 2
         part_num = 6
+        self.part_num = part_num
 
         self.pool_size = (part_num, 1)
         self.pool = nn.AdaptiveAvgPool2d(self.pool_size)
@@ -31,35 +32,51 @@ class CrossModalMamba(nn.Module):
         self.sigmoid = nn.Sigmoid()
         self.drop_path = DropPath(0.5)
 
-    def mamba_core(self, token):
-        B, CR, H_token, W_token = token.shape  # [B, in_cdim*cross_modal_ratio, H_token, W_token]
-        mamba_xz = self.in_proj(token)  # [B, d_inner*2, H_token, W_token]
+    def mamba_core(self, feat):
+        B, C, H, W = feat.shape  # [B, C, H, W]
+        mamba_xz = self.in_proj(feat)  # [B, C, H, W]
         mamba_x, mamba_z = mamba_xz.chunk(2, dim=1)
-        ssm_out = self.ssm(mamba_x.flatten(2))  # [B, d_inner, H_token, W_token]
-        ssm_out = rearrange(ssm_out, "b (h w) c -> b c h w", h=H_token, w=W_token)
-        # ssm_out = ssm_out * self.act(mamba_z)  # [B,  d_inner, H_token, W_token]
-        # ssm_out = self.out_proj(ssm_out)  # [B,  in_cdim*cross_modal_ratio, H_token, W_token]
-        # ssm_out = self.drop_path(ssm_out) + token
-        return ssm_out  # [B, in_cdim*cross_modal_ratio, H_token, W_token]
+        ssm_out = self.ssm(mamba_x.flatten(2))  # [B, HW, C]
+        ssm_out = rearrange(ssm_out, "b (h w) c -> b c h w", h=H, w=W)  # [B, C, H, W]
+        ssm_out = ssm_out * self.act(mamba_z)  # [B, C, H, W]
+        ssm_out = self.out_proj(ssm_out)  # [B, C, H, W]
+        return ssm_out  # [B, C, H, W]
 
     def forward(self, vis_feat, inf_feat):
         B, C, H, W = vis_feat.shape
-        vis_feat = self.pool(vis_feat)  # [B, in_cdim, H_new, W_new]
-        inf_feat = self.pool(inf_feat)
 
-        modal_x = torch.stack([vis_feat, inf_feat], dim=2)  # [B, in_cdim, 2, H, W]
-        modal_x = rearrange(modal_x, "B hidden s2 H W -> B (hidden s2) H W")  # # [B, in_cdim*2, H, W]
+        vis_pool_feat = self.pool(vis_feat)  # [B, C, H, W]
+        inf_pool_feat = self.pool(inf_feat)
+        vis_skip_pool_feat = vis_pool_feat
+        inf_skip_pool_feat = inf_pool_feat
 
-        ssm_out = self.mamba_core(modal_x)  # [B, in_cdim*cross_modal_ratio, H_token, W_token]
-        vis_out = ssm_out[:, 0::2]  # [B, in_cdim, H_new, W_new]
+        modal_x = torch.stack([vis_pool_feat, inf_pool_feat], dim=2)
+        modal_x = rearrange(modal_x, "B hidden s2 H W -> B (hidden s2) H W")  # [B, C, H, W]
+        ssm_out = self.mamba_core(modal_x)  # [B, C, H, W]
+        vis_out = ssm_out[:, 0::2]  # [B, C, H, W]
         inf_out = ssm_out[:, 1::2]
 
-        vis_cat_out = vis_out.reshape(B, -1, 1, 1)  # [B, in_cdim*part_num, 1, 1]
-        inf_cat_out = inf_out.reshape(B, -1, 1, 1)
+        vis_out = self.drop_path(vis_out) + vis_skip_pool_feat
+        inf_out = self.drop_path(inf_out) + inf_skip_pool_feat
 
-        vis_att = self.sigmoid(self.cat_proj(vis_cat_out))
-        inf_att = self.sigmoid(self.cat_proj(inf_cat_out))
-        return vis_att, inf_att
+        vis_att = self.sigmoid(vis_out)  # [B, C, H, W]
+        inf_att = self.sigmoid(inf_out)
+
+        vis_feat_list_out = []
+        inf_feat_list_out = []
+        rows_per_part = H // self.part_num
+        for pi in range(self.part_num):
+            start = pi * rows_per_part
+            end = (pi + 1) * rows_per_part
+            vis_feat_out_i = vis_feat[:, :, start:end, :] * vis_att[:, :, pi : pi + 1, :]
+            inf_feat_out_i = inf_feat[:, :, start:end, :] * inf_att[:, :, pi : pi + 1, :]
+            vis_feat_list_out.append(vis_feat_out_i)
+            inf_feat_list_out.append(inf_feat_out_i)
+
+        vis_feat_out = torch.cat(vis_feat_list_out, dim=2)  # [B, C, H, W]
+        inf_feat_out = torch.cat(inf_feat_list_out, dim=2)
+
+        return vis_feat_out, inf_feat_out
 
 
 ####################################################################################
