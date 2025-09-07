@@ -28,7 +28,11 @@ class CrossModalMamba(nn.Module):
         self.act = nn.SiLU()
         self.out_proj = nn.Conv2d(d_inner, in_cdim * cross_modal_ratio, 1, 1)
 
-        self.cat_proj = nn.Conv2d(hidden_cdim * part_num, in_cdim, 1, 1)
+        self.cbr = nn.Sequential(
+            nn.Conv2d(in_cdim, in_cdim, 3, 1, 1),
+            nn.BatchNorm2d(in_cdim),
+            nn.ReLU(),
+        )
         self.sigmoid = nn.Sigmoid()
         self.drop_path = DropPath(0.5)
 
@@ -58,6 +62,9 @@ class CrossModalMamba(nn.Module):
 
         vis_out = self.drop_path(vis_out) + vis_skip_pool_feat
         inf_out = self.drop_path(inf_out) + inf_skip_pool_feat
+
+        vis_out = self.cbr(vis_out)
+        inf_out = self.cbr(inf_out)
 
         vis_att = self.sigmoid(vis_out)  # [B, C, H, W]
         inf_att = self.sigmoid(inf_out)
