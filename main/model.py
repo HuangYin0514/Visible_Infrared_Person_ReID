@@ -146,11 +146,21 @@ class Modal_Interaction(nn.Module):
         self.MAMBA = CrossModalMamba(in_cdim=c_dim, hidden_cdim=256)
         # self.vis_weight = nn.Parameter(torch.tensor(0.001))
         # self.inf_weight = nn.Parameter(torch.tensor(0.001))
+        self.vis_c = nn.Sequential(
+            nn.Conv2d(c_dim, c_dim, 1, 1, 0, bias=False),
+            nn.BatchNorm2d(c_dim),
+            nn.ReLU(),
+        )
+        self.inf_c = nn.Sequential(
+            nn.Conv2d(c_dim, c_dim, 1, 1, 0, bias=False),
+            nn.BatchNorm2d(c_dim),
+            nn.ReLU(),
+        )
 
     def forward(self, vis_feat, inf_feat):
-        vis_mamba_feat, inf_mamba_feat = self.MAMBA(vis_feat, inf_feat)
-        vis_feat = vis_feat + inf_mamba_feat
-        inf_feat = inf_feat + vis_mamba_feat
+        # vis_mamba_feat, inf_mamba_feat = self.MAMBA(vis_feat, inf_feat)
+        vis_feat = vis_feat + self.vis_c(vis_feat - inf_feat)
+        inf_feat = inf_feat + self.inf_c(vis_feat - inf_feat)
         return vis_feat, inf_feat
 
 
