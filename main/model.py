@@ -161,8 +161,8 @@ class Modal_Interaction(nn.Module):
 
     def forward(self, vis_feat, inf_feat):
         # vis_mamba_feat, inf_mamba_feat = self.MAMBA(vis_feat, inf_feat)
-        vis_feat = vis_feat + self.vis_c(vis_feat + inf_feat) * vis_feat
-        inf_feat = inf_feat + self.inf_c(inf_feat + vis_feat) * inf_feat
+        vis_feat = vis_feat + (1 - self.vis_c(vis_feat + inf_feat)) * vis_feat
+        inf_feat = inf_feat + (1 - self.inf_c(inf_feat + vis_feat)) * inf_feat
         return vis_feat, inf_feat
 
 
