@@ -146,23 +146,32 @@ class Modal_Interaction(nn.Module):
         self.MAMBA = CrossModalMamba(in_cdim=c_dim, hidden_cdim=256)
         # self.vis_weight = nn.Parameter(torch.tensor(0.001))
         # self.inf_weight = nn.Parameter(torch.tensor(0.001))
-        self.vis_c = nn.Sequential(
+        self.M_con = nn.Sequential(
             nn.Conv2d(c_dim, c_dim, 1, 1, 0, bias=False),
             nn.BatchNorm2d(c_dim),
             # nn.ReLU(),
-            nn.Sigmoid(),
         )
-        self.inf_c = nn.Sequential(
+        self.vis_sp = nn.Sequential(
             nn.Conv2d(c_dim, c_dim, 1, 1, 0, bias=False),
             nn.BatchNorm2d(c_dim),
             # nn.ReLU(),
-            nn.Sigmoid(),
         )
+        self.inf_sp = nn.Sequential(
+            nn.Conv2d(c_dim, c_dim, 1, 1, 0, bias=False),
+            nn.BatchNorm2d(c_dim),
+            # nn.ReLU(),
+        )
+
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, vis_feat, inf_feat):
         # vis_mamba_feat, inf_mamba_feat = self.MAMBA(vis_feat, inf_feat)
-        vis_feat = vis_feat * self.vis_c(vis_feat + inf_feat)
-        inf_feat = inf_feat * self.inf_c(inf_feat + vis_feat)
+        M_con = self.M_con(vis_feat + inf_feat)
+        M_vis_sp = self.vis_sp(vis_feat)
+        M_inf_sp = self.inf_sp(inf_feat)
+
+        vis_feat = vis_feat * (1 - self.sigmoid(M_con * M_vis_sp))
+        inf_feat = inf_feat * (1 - self.sigmoid(M_con * M_inf_sp))
         return vis_feat, inf_feat
 
 
