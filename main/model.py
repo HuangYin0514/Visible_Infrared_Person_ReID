@@ -155,11 +155,13 @@ class Modal_Interaction(nn.Module):
             nn.Conv2d(c_dim, c_dim, 1, 1, 0, bias=False),
             nn.BatchNorm2d(c_dim),
             # nn.ReLU(),
+            nn.Sigmoid(),
         )
         self.inf_sp = nn.Sequential(
             nn.Conv2d(c_dim, c_dim, 1, 1, 0, bias=False),
             nn.BatchNorm2d(c_dim),
             # nn.ReLU(),
+            nn.Sigmoid(),
         )
 
         self.sigmoid = nn.Sigmoid()
