@@ -147,6 +147,7 @@ class Modal_Interaction(nn.Module):
         # self.vis_weight = nn.Parameter(torch.tensor(0.001))
         # self.inf_weight = nn.Parameter(torch.tensor(0.001))
         self.M_con = nn.Sequential(
+            nn.AdaptiveAvgPool2d((1, 1)),
             nn.Conv2d(c_dim, c_dim, 1, 1, 0, bias=False),
             nn.BatchNorm2d(c_dim),
             nn.ReLU(),
@@ -169,11 +170,11 @@ class Modal_Interaction(nn.Module):
     def forward(self, vis_feat, inf_feat):
         # vis_mamba_feat, inf_mamba_feat = self.MAMBA(vis_feat, inf_feat)
         M_con = self.M_con(vis_feat + inf_feat)
-        M_vis_sp = self.vis_sp(vis_feat)
-        M_inf_sp = self.inf_sp(inf_feat)
+        # M_vis_sp = self.vis_sp(vis_feat)
+        # M_inf_sp = self.inf_sp(inf_feat)
 
-        vis_feat = vis_feat * (1 - self.sigmoid(M_con * M_vis_sp))
-        inf_feat = inf_feat * (1 - self.sigmoid(M_con * M_inf_sp))
+        vis_feat = vis_feat * (1 - self.sigmoid(M_con))
+        inf_feat = inf_feat * (1 - self.sigmoid(M_con))
         return vis_feat, inf_feat
 
 
