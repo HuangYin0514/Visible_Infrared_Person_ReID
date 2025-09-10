@@ -146,11 +146,17 @@ class Modal_Interaction(nn.Module):
         self.MAMBA = CrossModalMamba(in_cdim=c_dim, hidden_cdim=256)
         # self.vis_weight = nn.Parameter(torch.tensor(0.001))
         # self.inf_weight = nn.Parameter(torch.tensor(0.001))
+        self.fused_conv = nn.Sequential(
+            nn.Conv2d(c_dim * 2, c_dim, 1, 1, 0, bias=False),
+            nn.BatchNorm2d(c_dim),
+            nn.ReLU(),
+        )
         self.M_con = nn.Sequential(
             nn.AdaptiveAvgPool2d((1, 1)),
             nn.Conv2d(c_dim, c_dim, 1, 1, 0, bias=False),
-            nn.BatchNorm2d(c_dim),
+            # nn.BatchNorm2d(c_dim),
             nn.ReLU(),
+            nn.Conv2d(c_dim, c_dim, 1, 1, 0, bias=False),
         )
         self.vis_sp = nn.Sequential(
             nn.Conv2d(c_dim, c_dim, 1, 1, 0, bias=False),
@@ -169,7 +175,8 @@ class Modal_Interaction(nn.Module):
 
     def forward(self, vis_feat, inf_feat):
         # vis_mamba_feat, inf_mamba_feat = self.MAMBA(vis_feat, inf_feat)
-        M_con = self.M_con(vis_feat + inf_feat)
+        cat_feat = self.fused_conv(torch.cat([vis_feat, inf_feat], dim=1))
+        M_con = self.M_con(cat_feat)
         # M_vis_sp = self.vis_sp(vis_feat)
         # M_inf_sp = self.inf_sp(inf_feat)
 
