@@ -149,7 +149,7 @@ class Modal_Interaction(nn.Module):
         self.M_con = nn.Sequential(
             nn.Conv2d(c_dim, c_dim, 1, 1, 0, bias=False),
             nn.BatchNorm2d(c_dim),
-            # nn.ReLU(),
+            nn.ReLU(),
         )
         self.vis_sp = nn.Sequential(
             nn.Conv2d(c_dim, c_dim, 1, 1, 0, bias=False),
