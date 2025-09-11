@@ -175,13 +175,13 @@ class Modal_Interaction(nn.Module):
 
     def forward(self, vis_feat, inf_feat):
         # vis_mamba_feat, inf_mamba_feat = self.MAMBA(vis_feat, inf_feat)
-        cat_feat = self.fused_conv(torch.cat([vis_feat, inf_feat], dim=1))
-        M_con = self.M_con(cat_feat)
+        # cat_feat = self.fused_conv(torch.cat([vis_feat, inf_feat], dim=1))
+        # M_con = self.M_con(cat_feat)
         # M_vis_sp = self.vis_sp(vis_feat)
         # M_inf_sp = self.inf_sp(inf_feat)
 
-        vis_feat = vis_feat * (1 - self.sigmoid(M_con))
-        inf_feat = inf_feat * (1 - self.sigmoid(M_con))
+        # vis_feat = vis_feat * (1 - self.sigmoid(M_con))
+        # inf_feat = inf_feat * (1 - self.sigmoid(M_con))
         return vis_feat, inf_feat
 
 
