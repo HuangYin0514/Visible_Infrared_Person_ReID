@@ -35,9 +35,9 @@ class ReIDNet(nn.Module):
         self.modal_propagation_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
         self.modal_propagation = DistillKL(T=4)
 
-        # ------------- weights init -----------------------
-        self.modal_interaction.apply(weights_init_kaiming)
-        self.modal_calibration.apply(weights_init_kaiming)
+        # # ------------- weights init -----------------------
+        # self.modal_interaction.apply(weights_init_kaiming)
+        # self.modal_calibration.apply(weights_init_kaiming)
 
     def forward(self, x_vis, x_inf, modal):
         backbone_feature_map = self.backbone(x_vis, x_inf, modal)
@@ -143,45 +143,9 @@ class Backbone(nn.Module):
 class Modal_Interaction(nn.Module):
     def __init__(self, c_dim):
         super(Modal_Interaction, self).__init__()
-        self.MAMBA = CrossModalMamba(in_cdim=c_dim, hidden_cdim=256)
-        # self.vis_weight = nn.Parameter(torch.tensor(0.001))
-        # self.inf_weight = nn.Parameter(torch.tensor(0.001))
-        self.fused_conv = nn.Sequential(
-            nn.Conv2d(c_dim * 2, c_dim, 1, 1, 0, bias=False),
-            nn.BatchNorm2d(c_dim),
-            nn.ReLU(),
-        )
-        self.M_con = nn.Sequential(
-            nn.AdaptiveAvgPool2d((1, 1)),
-            nn.Conv2d(c_dim, c_dim, 1, 1, 0, bias=False),
-            # nn.BatchNorm2d(c_dim),
-            nn.ReLU(),
-            nn.Conv2d(c_dim, c_dim, 1, 1, 0, bias=False),
-        )
-        self.vis_sp = nn.Sequential(
-            nn.Conv2d(c_dim, c_dim, 1, 1, 0, bias=False),
-            nn.BatchNorm2d(c_dim),
-            # nn.ReLU(),
-            nn.Sigmoid(),
-        )
-        self.inf_sp = nn.Sequential(
-            nn.Conv2d(c_dim, c_dim, 1, 1, 0, bias=False),
-            nn.BatchNorm2d(c_dim),
-            # nn.ReLU(),
-            nn.Sigmoid(),
-        )
-
-        self.sigmoid = nn.Sigmoid()
 
     def forward(self, vis_feat, inf_feat):
-        # vis_mamba_feat, inf_mamba_feat = self.MAMBA(vis_feat, inf_feat)
-        # cat_feat = self.fused_conv(torch.cat([vis_feat, inf_feat], dim=1))
-        # M_con = self.M_con(cat_feat)
-        # M_vis_sp = self.vis_sp(vis_feat)
-        # M_inf_sp = self.inf_sp(inf_feat)
 
-        # vis_feat = vis_feat * (1 - self.sigmoid(M_con))
-        # inf_feat = inf_feat * (1 - self.sigmoid(M_con))
         return vis_feat, inf_feat
 
 
