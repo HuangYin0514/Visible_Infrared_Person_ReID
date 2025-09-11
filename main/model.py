@@ -152,14 +152,14 @@ class Modal_Interaction(nn.Module):
 class Modal_Calibration(nn.Module):
     def __init__(self, c_dim):
         super(Modal_Calibration, self).__init__()
-        self.c_dim = c_dim
+        # self.c_dim = c_dim
 
-        self.vis_gate_calibration = Gate_Fusion(c_dim)
-        self.inf_gate_calibration = Gate_Fusion(c_dim)
+        # self.vis_gate_calibration = Gate_Fusion(c_dim)
+        # self.inf_gate_calibration = Gate_Fusion(c_dim)
 
     def forward(self, vis_feat, res_vis_feat, inf_feat, res_inf_feat):
-        vis_feat = self.vis_gate_calibration(vis_feat, res_vis_feat)
-        inf_feat = self.inf_gate_calibration(inf_feat, res_inf_feat)
+        # vis_feat = self.vis_gate_calibration(vis_feat, res_vis_feat)
+        # inf_feat = self.inf_gate_calibration(inf_feat, res_inf_feat)
         return vis_feat, inf_feat
 
 
