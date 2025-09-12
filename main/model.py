@@ -25,15 +25,15 @@ class ReIDNet(nn.Module):
         self.backbone_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
 
         # ------------- Modal interaction -----------------------
-        self.modal_interaction = Modal_Interaction(BACKBONE_FEATURES_DIM)
+        # self.modal_interaction = Modal_Interaction(BACKBONE_FEATURES_DIM)
 
         # ------------- Modal calibration -----------------------
-        self.modal_calibration = Modal_Calibration(BACKBONE_FEATURES_DIM)
+        # self.modal_calibration = Modal_Calibration(BACKBONE_FEATURES_DIM)
 
         # ------------- modal propagation -----------------------
-        self.modal_propagation_pooling = GeneralizedMeanPoolingP()
-        self.modal_propagation_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
-        self.modal_propagation = DistillKL(T=4)
+        # self.modal_propagation_pooling = GeneralizedMeanPoolingP()
+        # self.modal_propagation_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
+        # self.modal_propagation = DistillKL(T=4)
 
         # # ------------- weights init -----------------------
         # self.modal_interaction.apply(weights_init_kaiming)
