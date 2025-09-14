@@ -10,6 +10,7 @@ import util
 from criterion import Criterion
 from data_loader import Data_Loder
 from eval_metrics import eval_sysu
+from func_tool import *
 from identity_sampler import IdentitySampler
 from model import ReIDNet
 from optimizer import Optimizer
@@ -105,7 +106,7 @@ def run(config):
             net.train()
             if config.MODEL.MODULE == "Lucky":
                 total_loss = 0
-                batch_size = vis_imgs.size(0) * 2
+                batch_size = vis_imgs.size(0) * 2  # 64
 
                 vis_labels, inf_labels = vis_labels.to(DEVICE), inf_labels.to(DEVICE)
                 labels = torch.cat([vis_labels, inf_labels], 0)
@@ -145,8 +146,17 @@ def run(config):
                 MODAL_PROPAGATION_FALG = config.MODEL.MODAL_PROPAGATION_FALG
                 if MODAL_PROPAGATION_FALG:
                     # intergation
-                    modal_fusion_feat_map = (b_vis_feat_map + b_inf_feat_map) / 2
-                    modal_fusion_feat = net.modal_propagation_pooling(modal_fusion_feat_map).squeeze()
+                    modal_feat_map = torch.cat([b_vis_feat_map, b_inf_feat_map], dim=0)
+                    modal_feat = net.modal_propagation_pooling(modal_feat_map).squeeze()  # 池化
+                    vis_feat, inf_feat = torch.chunk(modal_feat, 2, dim=0)
+                    modal_fusion_feat = (vis_feat + inf_feat) / 2
+
+                    # # modal_Quantification(vis_imgs, inf_imgs, vis_labels, inf_labels, labels)  # 量化
+                    # # 相加
+                    # # 分类
+                    # # 损失
+                    # modal_fusion_feat_map = (b_vis_feat_map + b_inf_feat_map) / 2
+                    # modal_fusion_feat = net.modal_propagation_pooling(modal_fusion_feat_map).squeeze()
                     modal_fusion_bn_feat, modal_fusion_cls_score = net.modal_propagation_classifier(modal_fusion_feat)
                     modal_fusion_pid_loss = criterion.id(modal_fusion_cls_score, vis_labels)
                     # modal_fusion_tri_loss = criterion.tri(modal_fusion_feat, vis_labels)[0]
