@@ -146,20 +146,16 @@ def run(config):
                 MODAL_PROPAGATION_FALG = config.MODEL.MODAL_PROPAGATION_FALG
                 if MODAL_PROPAGATION_FALG:
                     # intergation
-                    modal_feat_map = torch.cat([b_vis_feat_map, b_inf_feat_map], dim=0)
-                    modal_feat = net.modal_propagation_pooling(modal_feat_map).squeeze()  # 池化
+                    modal_feat_map = torch.cat([b_vis_feat_map, b_inf_feat_map], dim=0)  # 量化
+                    modal_feat = net.modal_propagation_pooling(modal_feat_map).squeeze()
                     vis_feat, inf_feat = torch.chunk(modal_feat, 2, dim=0)
-                    modal_fusion_feat = (vis_feat + inf_feat) / 2
+                    vis_score, inf_score = torch.chunk(backbone_cls_score, 2, dim=0)
+                    vis_weights, inf_weights = modal_Quantification(vis_score, inf_score, vis_labels)
+                    modal_fusion_feat = vis_weights * vis_feat + inf_weights * inf_feat
 
-                    # # modal_Quantification(vis_imgs, inf_imgs, vis_labels, inf_labels, labels)  # 量化
-                    # # 相加
-                    # # 分类
-                    # # 损失
-                    # modal_fusion_feat_map = (b_vis_feat_map + b_inf_feat_map) / 2
-                    # modal_fusion_feat = net.modal_propagation_pooling(modal_fusion_feat_map).squeeze()
-                    modal_fusion_bn_feat, modal_fusion_cls_score = net.modal_propagation_classifier(modal_fusion_feat)
-                    modal_fusion_pid_loss = criterion.id(modal_fusion_cls_score, vis_labels)
-                    # modal_fusion_tri_loss = criterion.tri(modal_fusion_feat, vis_labels)[0]
+                    modal_fusion_bn_feat, modal_fusion_cls_score = net.modal_propagation_classifier(modal_fusion_feat)  # 分类
+
+                    modal_fusion_pid_loss = criterion.id(modal_fusion_cls_score, vis_labels)  # 损失
                     total_loss += modal_fusion_pid_loss
                     meter.update(
                         {
