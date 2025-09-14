@@ -150,7 +150,7 @@ def run(config):
                     modal_fusion_bn_feat, modal_fusion_cls_score = net.modal_propagation_classifier(modal_fusion_feat)
                     modal_fusion_pid_loss = criterion.id(modal_fusion_cls_score, vis_labels)
                     # modal_fusion_tri_loss = criterion.tri(modal_fusion_feat, vis_labels)[0]
-                    total_loss += modal_fusion_pid_loss
+                    total_loss += 0.1 * modal_fusion_pid_loss
                     meter.update(
                         {
                             "modal_fusion_pid_loss": modal_fusion_pid_loss.item(),
