@@ -152,6 +152,7 @@ def run(config):
                     vis_score, inf_score = torch.chunk(backbone_cls_score, 2, dim=0)
                     vis_weights, inf_weights = modal_Quantification(vis_score, inf_score, vis_labels)
                     modal_fusion_feat = vis_weights * vis_feat + inf_weights * inf_feat
+                    modal_fusion_feat = net.modal_fusion(modal_fusion_feat)
 
                     modal_fusion_bn_feat, modal_fusion_cls_score = net.modal_propagation_classifier(modal_fusion_feat)  # 分类
 

@@ -26,6 +26,7 @@ class ReIDNet(nn.Module):
 
         # ------------- modal propagation -----------------------
         self.modal_propagation_pooling = GeneralizedMeanPoolingP()
+        self.modal_fusion = Modal_Fusion(BACKBONE_FEATURES_DIM)
         self.modal_propagation_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
         self.modal_propagation = DistillKL(T=4)
 
@@ -140,70 +141,86 @@ class Backbone(nn.Module):
         return out
 
 
-class Modal_Interaction(nn.Module):
+class Modal_Fusion(nn.Module):
     def __init__(self, c_dim):
-        super(Modal_Interaction, self).__init__()
-
-    def forward(self, vis_feat, inf_feat):
-
-        return vis_feat, inf_feat
-
-
-class Modal_Calibration(nn.Module):
-    def __init__(self, c_dim):
-        super(Modal_Calibration, self).__init__()
-        # self.c_dim = c_dim
-
-        # self.vis_gate_calibration = Gate_Fusion(c_dim)
-        # self.inf_gate_calibration = Gate_Fusion(c_dim)
-
-    def forward(self, vis_feat, res_vis_feat, inf_feat, res_inf_feat):
-        # vis_feat = self.vis_gate_calibration(vis_feat, res_vis_feat)
-        # inf_feat = self.inf_gate_calibration(inf_feat, res_inf_feat)
-        return vis_feat, inf_feat
-
-
-class Gate_Fusion(nn.Module):
-    """
-
-    https://arxiv.org/pdf/2009.14082
-
-    https://0809zheng.github.io/2020/12/01/aff.html
-
-    基于情感表征校准的图文情感分析模型
-
-    """
-
-    def __init__(self, c_dim):
-        super(Gate_Fusion, self).__init__()
-        self.c_dim = c_dim
-
-        r = 4
-        inter_c_dim = int(c_dim // r)
-
-        self.att = nn.Sequential(
-            nn.AdaptiveAvgPool2d(1),
-            nn.Conv2d(c_dim, inter_c_dim, kernel_size=1, stride=1, padding=0),
-            nn.BatchNorm2d(inter_c_dim),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(inter_c_dim, c_dim, kernel_size=1, stride=1, padding=0),
-            nn.BatchNorm2d(c_dim),
-        )
-        self.sigmoid = nn.Sigmoid()
-
-        self.value_stable = nn.Sequential(
-            nn.Conv2d(c_dim, c_dim, kernel_size=1, stride=1, padding=0),
-            nn.BatchNorm2d(c_dim),
-            nn.ReLU(inplace=True),
+        super(Modal_Fusion, self).__init__()
+        self.mp = Residual(
+            nn.Sequential(
+                nn.Linear(c_dim, c_dim),
+                nn.BatchNorm1d(c_dim),
+                nn.ReLU(inplace=True),
+            )
         )
 
-    def forward(self, feat_1, feat_2):
-        # feat_1 -> H
-        # feat_2 -> E
-        # F = g * H + (1-g) * E
+    def forward(self, feat):
+        feat = self.mp(feat)
+        return
 
-        gate = self.sigmoid(self.att(feat_1))
-        feat = feat_1 * gate + feat_2 * (1 - gate)
-        feat = self.value_stable(feat)
 
-        return feat
+# class Modal_Interaction(nn.Module):
+#     def __init__(self, c_dim):
+#         super(Modal_Interaction, self).__init__()
+
+#     def forward(self, vis_feat, inf_feat):
+
+#         return vis_feat, inf_feat
+
+
+# class Modal_Calibration(nn.Module):
+#     def __init__(self, c_dim):
+#         super(Modal_Calibration, self).__init__()
+#         # self.c_dim = c_dim
+
+#         # self.vis_gate_calibration = Gate_Fusion(c_dim)
+#         # self.inf_gate_calibration = Gate_Fusion(c_dim)
+
+#     def forward(self, vis_feat, res_vis_feat, inf_feat, res_inf_feat):
+#         # vis_feat = self.vis_gate_calibration(vis_feat, res_vis_feat)
+#         # inf_feat = self.inf_gate_calibration(inf_feat, res_inf_feat)
+#         return vis_feat, inf_feat
+
+
+# class Gate_Fusion(nn.Module):
+#     """
+
+#     https://arxiv.org/pdf/2009.14082
+
+#     https://0809zheng.github.io/2020/12/01/aff.html
+
+#     基于情感表征校准的图文情感分析模型
+
+#     """
+
+#     def __init__(self, c_dim):
+#         super(Gate_Fusion, self).__init__()
+#         self.c_dim = c_dim
+
+#         r = 4
+#         inter_c_dim = int(c_dim // r)
+
+#         self.att = nn.Sequential(
+#             nn.AdaptiveAvgPool2d(1),
+#             nn.Conv2d(c_dim, inter_c_dim, kernel_size=1, stride=1, padding=0),
+#             nn.BatchNorm2d(inter_c_dim),
+#             nn.ReLU(inplace=True),
+#             nn.Conv2d(inter_c_dim, c_dim, kernel_size=1, stride=1, padding=0),
+#             nn.BatchNorm2d(c_dim),
+#         )
+#         self.sigmoid = nn.Sigmoid()
+
+#         self.value_stable = nn.Sequential(
+#             nn.Conv2d(c_dim, c_dim, kernel_size=1, stride=1, padding=0),
+#             nn.BatchNorm2d(c_dim),
+#             nn.ReLU(inplace=True),
+#         )
+
+#     def forward(self, feat_1, feat_2):
+#         # feat_1 -> H
+#         # feat_2 -> E
+#         # F = g * H + (1-g) * E
+
+#         gate = self.sigmoid(self.att(feat_1))
+#         feat = feat_1 * gate + feat_2 * (1 - gate)
+#         feat = self.value_stable(feat)
+
+#         return feat
