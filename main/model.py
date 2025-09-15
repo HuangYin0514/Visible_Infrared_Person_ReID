@@ -154,7 +154,7 @@ class Modal_Fusion(nn.Module):
 
     def forward(self, feat):
         feat = self.mp(feat)
-        return
+        return feat
 
 
 # class Modal_Interaction(nn.Module):
