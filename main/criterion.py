@@ -10,5 +10,5 @@ class Criterion:
 
     def load_criterion(self, config):
         self.id = nn.CrossEntropyLoss()
-        self.id_ls = CrossEntropyLabelSmooth()
+        # self.id_ls = CrossEntropyLabelSmooth()
         self.tri = OriTripletLoss(batch_size=config.DATALOADER.BATCHSIZE, margin=0.3)
