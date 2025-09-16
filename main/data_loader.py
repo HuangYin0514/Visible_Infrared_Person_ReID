@@ -118,12 +118,11 @@ class Dataset4Sysu_mm01(data.Dataset):
             [
                 transforms.ToPILImage(),
                 transforms.Pad(10),
-                # transforms.RandomCrop((288, 144)),
-                transforms.RandomCrop((256, 192)),
+                transforms.RandomCrop((288, 144)),
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 normalize,
-                RandomErasing(probability=0.5, mode="pixel", max_count=1, device="cpu"),
+                RandomErasing(probability=0.5, mean=[0.485, 0.456, 0.406]),
                 ChannelAdapGray(probability=1.0),
             ]
         )
@@ -131,12 +130,11 @@ class Dataset4Sysu_mm01(data.Dataset):
             [
                 transforms.ToPILImage(),
                 transforms.Pad(10),
-                # transforms.RandomCrop((288, 144)),
-                transforms.RandomCrop((256, 192)),
+                transforms.RandomCrop((288, 144)),
                 transforms.RandomHorizontalFlip(),
                 transforms.ToTensor(),
                 normalize,
-                RandomErasing(probability=0.5, mode="pixel", max_count=1, device="cpu"),
+                RandomErasing(probability=0.5, mean=[0.485, 0.456, 0.406]),
                 AdapGray(probability=0.5),
             ]
         )
