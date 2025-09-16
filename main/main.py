@@ -127,54 +127,54 @@ def run(config):
                     }
                 )
 
-                ###################################
-                # Modal information
-                b_vis_feat_map, b_inf_feat_map = torch.chunk(backbone_feat_map, 2, dim=0)
-                res_b_vis_feat_map, res_b_inf_feat_map = b_vis_feat_map, b_inf_feat_map
+                # ###################################
+                # # Modal information
+                # b_vis_feat_map, b_inf_feat_map = torch.chunk(backbone_feat_map, 2, dim=0)
+                # res_b_vis_feat_map, res_b_inf_feat_map = b_vis_feat_map, b_inf_feat_map
 
-                # # Modal interaction
-                # MODAL_INTERACTION_FLAG = config.MODEL.MODAL_INTERACTION_FLAG
-                # if MODAL_INTERACTION_FLAG:
-                #     b_vis_feat_map, b_inf_feat_map = net.modal_interaction(b_vis_feat_map, b_inf_feat_map)
+                # # # Modal interaction
+                # # MODAL_INTERACTION_FLAG = config.MODEL.MODAL_INTERACTION_FLAG
+                # # if MODAL_INTERACTION_FLAG:
+                # #     b_vis_feat_map, b_inf_feat_map = net.modal_interaction(b_vis_feat_map, b_inf_feat_map)
 
-                # # Modal calibration
-                # MODAL_CALIBRATION_FLAG = config.MODEL.MODAL_CALIBRATION_FLAG
-                # if MODAL_CALIBRATION_FLAG:
-                #     b_vis_feat_map, b_inf_feat_map = net.modal_calibration(b_vis_feat_map, res_b_vis_feat_map, b_inf_feat_map, res_b_inf_feat_map)
+                # # # Modal calibration
+                # # MODAL_CALIBRATION_FLAG = config.MODEL.MODAL_CALIBRATION_FLAG
+                # # if MODAL_CALIBRATION_FLAG:
+                # #     b_vis_feat_map, b_inf_feat_map = net.modal_calibration(b_vis_feat_map, res_b_vis_feat_map, b_inf_feat_map, res_b_inf_feat_map)
 
-                # Modal integration and propagation
-                MODAL_PROPAGATION_FALG = config.MODEL.MODAL_PROPAGATION_FALG
-                if MODAL_PROPAGATION_FALG:
-                    # intergation
-                    modal_feat_map = torch.cat([b_vis_feat_map, b_inf_feat_map], dim=0)  # 量化
-                    modal_feat = net.modal_propagation_pooling(modal_feat_map).squeeze()
-                    vis_feat, inf_feat = torch.chunk(modal_feat, 2, dim=0)
-                    vis_score, inf_score = torch.chunk(backbone_cls_score, 2, dim=0)
-                    vis_weights, inf_weights = modal_Quantification(vis_score, inf_score, vis_labels)
-                    modal_fusion_feat = vis_weights * vis_feat + inf_weights * inf_feat
-                    modal_fusion_feat = net.modal_fusion(modal_fusion_feat)
+                # # Modal integration and propagation
+                # MODAL_PROPAGATION_FALG = config.MODEL.MODAL_PROPAGATION_FALG
+                # if MODAL_PROPAGATION_FALG:
+                #     # intergation
+                #     modal_feat_map = torch.cat([b_vis_feat_map, b_inf_feat_map], dim=0)  # 量化
+                #     modal_feat = net.modal_propagation_pooling(modal_feat_map).squeeze()
+                #     vis_feat, inf_feat = torch.chunk(modal_feat, 2, dim=0)
+                #     vis_score, inf_score = torch.chunk(backbone_cls_score, 2, dim=0)
+                #     vis_weights, inf_weights = modal_Quantification(vis_score, inf_score, vis_labels)
+                #     modal_fusion_feat = vis_weights * vis_feat + inf_weights * inf_feat
+                #     modal_fusion_feat = net.modal_fusion(modal_fusion_feat)
 
-                    modal_fusion_bn_feat, modal_fusion_cls_score = net.modal_propagation_classifier(modal_fusion_feat)  # 分类
+                #     modal_fusion_bn_feat, modal_fusion_cls_score = net.modal_propagation_classifier(modal_fusion_feat)  # 分类
 
-                    assert (vis_labels == inf_labels).all()
-                    modal_fusion_pid_loss = criterion.id(modal_fusion_cls_score, vis_labels)  # 损失
-                    total_loss += modal_fusion_pid_loss
-                    meter.update(
-                        {
-                            "modal_fusion_pid_loss": modal_fusion_pid_loss.item(),
-                        }
-                    )
+                #     assert (vis_labels == inf_labels).all()
+                #     modal_fusion_pid_loss = criterion.id(modal_fusion_cls_score, vis_labels)  # 损失
+                #     total_loss += modal_fusion_pid_loss
+                #     meter.update(
+                #         {
+                #             "modal_fusion_pid_loss": modal_fusion_pid_loss.item(),
+                #         }
+                #     )
 
-                    # propagation
-                    # student_logits = backbone_cls_score
-                    # teacher_logits = torch.cat([modal_fusion_cls_score, modal_fusion_cls_score], dim=0)
-                    # modal_propagation_loss = net.modal_propagation(student_logits, teacher_logits)
-                    # total_loss += 0.01 * modal_propagation_loss
-                    # meter.update(
-                    #     {
-                    #         "modal_propagation_loss": modal_propagation_loss.item(),
-                    #     }
-                    # )
+                #     # propagation
+                #     # student_logits = backbone_cls_score
+                #     # teacher_logits = torch.cat([modal_fusion_cls_score, modal_fusion_cls_score], dim=0)
+                #     # modal_propagation_loss = net.modal_propagation(student_logits, teacher_logits)
+                #     # total_loss += 0.01 * modal_propagation_loss
+                #     # meter.update(
+                #     #     {
+                #     #         "modal_propagation_loss": modal_propagation_loss.item(),
+                #     #     }
+                #     # )
 
                 optimizer.zero_grad()
                 total_loss.backward()
