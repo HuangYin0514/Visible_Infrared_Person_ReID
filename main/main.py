@@ -10,12 +10,12 @@ import util
 from criterion import Criterion
 from data_loader import Data_Loder
 from eval_metrics import eval_sysu
-from func_tool import *
 from identity_sampler import IdentitySampler
 from model import ReIDNet
 from optimizer import Optimizer
 from scheduler import Scheduler
 from tqdm import tqdm
+from vi_tool import *
 
 import wandb
 
@@ -106,7 +106,7 @@ def run(config):
             net.train()
             if config.MODEL.MODULE == "Lucky":
                 total_loss = 0
-                batch_size = vis_imgs.size(0) * 2  # 64
+                batch_size = vis_imgs.size(0) * 2
 
                 vis_labels, inf_labels = vis_labels.to(DEVICE), inf_labels.to(DEVICE)
                 labels = torch.cat([vis_labels, inf_labels], 0)
@@ -127,54 +127,18 @@ def run(config):
                     }
                 )
 
-                # ###################################
-                # # Modal information
-                # b_vis_feat_map, b_inf_feat_map = torch.chunk(backbone_feat_map, 2, dim=0)
-                # res_b_vis_feat_map, res_b_inf_feat_map = b_vis_feat_map, b_inf_feat_map
-
-                # # # Modal interaction
-                # # MODAL_INTERACTION_FLAG = config.MODEL.MODAL_INTERACTION_FLAG
-                # # if MODAL_INTERACTION_FLAG:
-                # #     b_vis_feat_map, b_inf_feat_map = net.modal_interaction(b_vis_feat_map, b_inf_feat_map)
-
-                # # # Modal calibration
-                # # MODAL_CALIBRATION_FLAG = config.MODEL.MODAL_CALIBRATION_FLAG
-                # # if MODAL_CALIBRATION_FLAG:
-                # #     b_vis_feat_map, b_inf_feat_map = net.modal_calibration(b_vis_feat_map, res_b_vis_feat_map, b_inf_feat_map, res_b_inf_feat_map)
-
-                # # Modal integration and propagation
-                # MODAL_PROPAGATION_FALG = config.MODEL.MODAL_PROPAGATION_FALG
-                # if MODAL_PROPAGATION_FALG:
-                #     # intergation
-                #     modal_feat_map = torch.cat([b_vis_feat_map, b_inf_feat_map], dim=0)  # 量化
-                #     modal_feat = net.modal_propagation_pooling(modal_feat_map).squeeze()
-                #     vis_feat, inf_feat = torch.chunk(modal_feat, 2, dim=0)
-                #     vis_score, inf_score = torch.chunk(backbone_cls_score, 2, dim=0)
-                #     vis_weights, inf_weights = modal_Quantification(vis_score, inf_score, vis_labels)
-                #     modal_fusion_feat = vis_weights * vis_feat + inf_weights * inf_feat
-                #     modal_fusion_feat = net.modal_fusion(modal_fusion_feat)
-
-                #     modal_fusion_bn_feat, modal_fusion_cls_score = net.modal_propagation_classifier(modal_fusion_feat)  # 分类
-
-                #     assert (vis_labels == inf_labels).all()
-                #     modal_fusion_pid_loss = criterion.id(modal_fusion_cls_score, vis_labels)  # 损失
-                #     total_loss += modal_fusion_pid_loss
-                #     meter.update(
-                #         {
-                #             "modal_fusion_pid_loss": modal_fusion_pid_loss.item(),
-                #         }
-                #     )
-
-                #     # propagation
-                #     # student_logits = backbone_cls_score
-                #     # teacher_logits = torch.cat([modal_fusion_cls_score, modal_fusion_cls_score], dim=0)
-                #     # modal_propagation_loss = net.modal_propagation(student_logits, teacher_logits)
-                #     # total_loss += 0.01 * modal_propagation_loss
-                #     # meter.update(
-                #     #     {
-                #     #         "modal_propagation_loss": modal_propagation_loss.item(),
-                #     #     }
-                #     # )
+                # Modal integration and propagation
+                assert (vis_labels == inf_labels).all()
+                integrating_feat_map, integrating_labels = feat_map_integrating(backbone_feat_map, labels)
+                integrating_feat = net.modal_propagation_pooling(integrating_feat_map).squeeze()
+                integrating_bn_feat, integrating_cls_score = net.modal_propagation_classifier(integrating_feat)
+                integrating_pid_loss = criterion.id(integrating_cls_score, integrating_labels)
+                total_loss += integrating_pid_loss
+                meter.update(
+                    {
+                        "integrating_pid_loss": integrating_pid_loss.item(),
+                    }
+                )
 
                 optimizer.zero_grad()
                 total_loss.backward()

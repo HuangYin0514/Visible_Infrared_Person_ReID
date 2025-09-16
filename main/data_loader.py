@@ -113,39 +113,13 @@ class Dataset4Sysu_mm01(data.Dataset):
         self.cIndex = colorIndex
         self.tIndex = thermalIndex
 
-        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-        self.transform_vis = transforms.Compose(
-            [
-                transforms.ToPILImage(),
-                transforms.Pad(10),
-                transforms.RandomCrop((288, 144)),
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-                normalize,
-                RandomErasing(probability=0.5, mean=[0.485, 0.456, 0.406]),
-                ChannelAdapGray(probability=1.0),
-            ]
-        )
-        self.transform_inf = transforms.Compose(
-            [
-                transforms.ToPILImage(),
-                transforms.Pad(10),
-                transforms.RandomCrop((288, 144)),
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-                normalize,
-                RandomErasing(probability=0.5, mean=[0.485, 0.456, 0.406]),
-                AdapGray(probability=0.5),
-            ]
-        )
-
     def __getitem__(self, index):
 
         img1, target1 = self.color_image[self.cIndex[index]], self.color_label[self.cIndex[index]]
         img2, target2 = self.thermal_image[self.tIndex[index]], self.thermal_label[self.tIndex[index]]
 
-        img1 = self.transform_vis(img1)
-        img2 = self.transform_inf(img2)
+        img1 = self.transform(img1)
+        img2 = self.transform(img2)
 
         return img1, img2, target1, target2
 
@@ -176,7 +150,6 @@ class TestDataset(data.Dataset):
         return len(self.test_image)
 
 
-###################################################################################################################
 def GenIdx(train_color_label, train_thermal_label):
     color_pos = []
     unique_label_color = np.unique(train_color_label)
@@ -207,154 +180,3 @@ class RandomGrayscale:
             x[0] = x[1] = x[2]
 
         return x
-
-
-class ChannelAdapGray(object):
-    """Adaptive selects a channel or two channels.
-    Args:
-         probability: The probability that the Random Erasing operation will be performed.
-         sl: Minimum proportion of erased area against input image.
-         sh: Maximum proportion of erased area against input image.
-         r1: Minimum aspect ratio of erased area.
-         mean: Erasing value.
-    """
-
-    def __init__(self, probability=0.5):
-        self.probability = probability
-
-    def __call__(self, img):
-
-        # if random.uniform(0, 1) > self.probability:
-        # return img
-
-        idx = random.randint(0, 3)
-
-        if idx == 0:
-            # random select R Channel
-            img[1, :, :] = img[0, :, :]
-            img[2, :, :] = img[0, :, :]
-        elif idx == 1:
-            # random select B Channel
-            img[0, :, :] = img[1, :, :]
-            img[2, :, :] = img[1, :, :]
-        elif idx == 2:
-            # random select G Channel
-            img[0, :, :] = img[2, :, :]
-            img[1, :, :] = img[2, :, :]
-        else:
-            if random.uniform(0, 1) > self.probability:
-                # return img
-                img = img
-            else:
-                tmp_img = 0.2989 * img[0, :, :] + 0.5870 * img[1, :, :] + 0.1140 * img[2, :, :]  # float trabsform to gray image
-                img[0, :, :] = tmp_img
-                img[1, :, :] = tmp_img
-                img[2, :, :] = tmp_img
-        return img
-
-
-class ChannelExchange(object):
-    """Adaptive selects a channel or two channels.
-    Args:
-         probability: The probability that the Random Erasing operation will be performed.
-         sl: Minimum proportion of erased area against input image.
-         sh: Maximum proportion of erased area against input image.
-         r1: Minimum aspect ratio of erased area.
-         mean: Erasing value.
-    """
-
-    def __init__(self, gray=2):
-        self.gray = gray
-
-    def __call__(self, img):
-
-        idx = random.randint(0, self.gray)
-
-        if idx == 0:
-            # random select R Channel
-            img[1, :, :] = img[0, :, :]
-            img[2, :, :] = img[0, :, :]
-        elif idx == 1:
-            # random select B Channel
-            img[0, :, :] = img[1, :, :]
-            img[2, :, :] = img[1, :, :]
-        elif idx == 2:
-            # random select G Channel
-            img[0, :, :] = img[2, :, :]
-            img[1, :, :] = img[2, :, :]
-        else:
-            tmp_img = 0.2989 * img[0, :, :] + 0.5870 * img[1, :, :] + 0.1140 * img[2, :, :]
-            img[0, :, :] = tmp_img
-            img[1, :, :] = tmp_img
-            img[2, :, :] = tmp_img
-        return img
-
-
-class GrayExchange(object):
-    def __init__(self, gray=2):
-        self.gray = gray
-
-    def __call__(self, img):
-
-        tmp_img = 0.2989 * img[0, :, :] + 0.5870 * img[1, :, :] + 0.1140 * img[2, :, :]
-        img[0, :, :] = tmp_img
-        img[1, :, :] = tmp_img
-        img[2, :, :] = tmp_img
-        return img
-
-
-class AdapGray(object):
-    """Adaptive selects a channel or two channels.
-    Args:
-         probability: The probability that the Random Erasing operation will be performed.
-         sl: Minimum proportion of erased area against input image.
-         sh: Maximum proportion of erased area against input image.
-         r1: Minimum aspect ratio of erased area.
-         mean: Erasing value.
-    """
-
-    def __init__(self, probability=0.5):
-        self.probability = probability
-
-    def __call__(self, img):
-
-        # if random.uniform(0, 1) > self.probability:
-        # return img
-
-        if random.uniform(0, 1) > self.probability:
-            # return img
-            img = img
-        else:
-            tmp_img = 0.2989 * img[0, :, :] + 0.5870 * img[1, :, :] + 0.1140 * img[2, :, :]
-            img[0, :, :] = tmp_img
-            img[1, :, :] = tmp_img
-            img[2, :, :] = tmp_img
-        return img
-
-
-class reAdapGray(object):
-    """Adaptive selects a channel or two channels.
-    Args:
-         probability: The probability that the Random Erasing operation will be performed.
-         sl: Minimum proportion of erased area against input image.
-         sh: Maximum proportion of erased area against input image.
-         r1: Minimum aspect ratio of erased area.
-         mean: Erasing value.
-    """
-
-    def __init__(self, probability=0.5):
-        self.probability = probability
-
-    def __call__(self, img):
-
-        # if random.uniform(0, 1) > self.probability:
-        # return img
-
-        if random.uniform(0, 1) > self.probability:
-            # return img
-            img = img
-        else:
-            img[0, :, :] = 0.2989 * img[0, :, :]
-            img[1, :, :] = 0.5870 * img[1, :, :]
-            img[2, :, :] = 0.1140 * img[2, :, :]
-        return img
