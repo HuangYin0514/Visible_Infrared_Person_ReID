@@ -132,18 +132,18 @@ def run(config):
                     }
                 )
 
-                # # Modal integration and propagation
-                # assert (vis_labels == inf_labels).all()
-                # integrating_feat_map, integrating_labels = feat_map_integrating(backbone_feat_map, labels)
-                # integrating_feat = net.modal_propagation_pooling(integrating_feat_map).squeeze()
-                # integrating_bn_feat, integrating_cls_score = net.modal_propagation_classifier(integrating_feat)
-                # integrating_pid_loss = criterion.id(integrating_cls_score, integrating_labels)
-                # total_loss += integrating_pid_loss
-                # meter.update(
-                #     {
-                #         "integrating_pid_loss": integrating_pid_loss.item(),
-                #     }
-                # )
+                # Modal integration and propagation
+                assert (vis_labels == inf_labels).all()
+                integrating_feat_map, integrating_labels = feat_map_integrating(backbone_feat_map, labels)
+                integrating_feat = net.modal_propagation_pooling(integrating_feat_map).squeeze()
+                integrating_bn_feat, integrating_cls_score = net.modal_propagation_classifier(integrating_feat)
+                integrating_pid_loss = criterion.id(integrating_cls_score, integrating_labels)
+                total_loss += integrating_pid_loss
+                meter.update(
+                    {
+                        "integrating_pid_loss": integrating_pid_loss.item(),
+                    }
+                )
 
                 optimizer.zero_grad()
                 total_loss.backward()

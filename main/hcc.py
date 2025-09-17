@@ -47,16 +47,10 @@ class hcc(nn.Module):
         if d == "kl":
             margin = self.margin_kl
             x = x.softmax(dim=-1)
-        # p = len(pids.unique())
-        # c = x.shape[-1]
-        # pidhc = pids.reshape(2 * p, -1)[:, 0]  # pid编号
-        # hcen = x.reshape(2 * p, -1, c).mean(dim=1)  # 每个pid对应的中心，C维
-        unique_pids = pids.unique(sorted=True)  # 保证 ID 顺序固定
-        hcen = []
-        for pid in unique_pids:
-            hcen.append(x[pids == pid].mean(dim=0))  # 每个 ID 的中心
-        hcen = torch.stack(hcen, dim=0)  # [p, c]
-        pidhc = unique_pids  # [p]
+        p = len(pids.unique())
+        c = x.shape[-1]
+        pidhc = pids.reshape(2 * p, -1)[:, 0]  # pid编号
+        hcen = x.reshape(2 * p, -1, c).mean(dim=1)  # 每个pid对应的中心，C维
 
         dist, mask = compute_dist(x, hcen, pids, pidhc, d)
         loss = []
