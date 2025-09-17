@@ -145,6 +145,16 @@ def run(config):
                     }
                 )
 
+                student_logits = backbone_cls_score
+                teacher_logits = torch.cat([integrating_cls_score, integrating_cls_score], dim=0)
+                modal_propagation_loss = net.modal_propagation(student_logits, teacher_logits)
+                total_loss += 0.01 * modal_propagation_loss
+                meter.update(
+                    {
+                        "modal_propagation_loss": modal_propagation_loss.item(),
+                    }
+                )
+
                 optimizer.zero_grad()
                 total_loss.backward()
                 optimizer.step()

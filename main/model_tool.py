@@ -69,12 +69,13 @@ class DistillKL(nn.Module):
     def __init__(self, T=4):
         super(DistillKL, self).__init__()
         self.T = T
+        self.kl = nn.KLDivLoss(reduction="batchmean")
 
     def forward(self, student_logits, teacher_logits):
         #
         p_s = F.log_softmax(student_logits / self.T, dim=1)
         p_t = F.softmax(teacher_logits / self.T, dim=1)
-        loss = F.kl_div(p_s, p_t, size_average=False) * (self.T**2) / student_logits.shape[0]
+        loss = self.kl(p_s, p_t)  # * (self.T ** 2)
         return loss
 
 
