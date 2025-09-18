@@ -132,6 +132,14 @@ def run(config):
                     }
                 )
 
+                # ---- Interaction  ----
+                interactin_feat_map = net.interaction(backbone_feat_map)
+                interaction_feat = net.interaction_pooling(interactin_feat_map).squeeze()
+                interaction_bn_feat, interaction_cls_score = net.interaction_classifier(interaction_feat)
+                interaction_pid_loss = criterion.id(interaction_cls_score, labels)
+                total_loss += interaction_pid_loss
+                meter.update({"interaction_pid_loss": interaction_pid_loss.item()})
+
                 optimizer.zero_grad()
                 total_loss.backward()
                 optimizer.step()
