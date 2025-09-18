@@ -120,40 +120,48 @@ def run(config):
                 backbone_pid_loss = criterion.id(backbone_cls_score, labels)
                 # backbone_tri_loss = criterion.tri(backbone_feat, labels)[0]
                 loss_hcc_euc = criterion.hcc(backbone_feat, labels, "euc")
-                loss_hcc_kl = criterion.hcc(backbone_cls_score, labels, "kl")
+                # loss_hcc_kl = criterion.hcc(backbone_cls_score, labels, "kl")
 
-                total_loss += backbone_pid_loss + loss_hcc_euc + loss_hcc_kl
+                # total_loss += backbone_pid_loss + loss_hcc_euc + loss_hcc_kl
+                # meter.update(
+                #     {
+                #         "backbone_pid_loss": backbone_pid_loss.item(),
+                #         # "backbone_tri_loss": backbone_tri_loss.item(),
+                #         "loss_hcc_euc": loss_hcc_euc.item(),
+                #         "loss_hcc_kl": loss_hcc_kl.item(),
+                #     }
+                # )
+
+                total_loss += backbone_pid_loss + loss_hcc_euc
                 meter.update(
                     {
                         "backbone_pid_loss": backbone_pid_loss.item(),
-                        # "backbone_tri_loss": backbone_tri_loss.item(),
                         "loss_hcc_euc": loss_hcc_euc.item(),
-                        "loss_hcc_kl": loss_hcc_kl.item(),
                     }
                 )
 
-                # Modal integration and propagation
-                assert (vis_labels == inf_labels).all()
-                integrating_feat_map, integrating_labels = feat_map_integrating(backbone_feat_map, labels)
-                integrating_feat = net.modal_propagation_pooling(integrating_feat_map).squeeze()
-                integrating_bn_feat, integrating_cls_score = net.modal_propagation_classifier(integrating_feat)
-                integrating_pid_loss = criterion.id(integrating_cls_score, integrating_labels)
-                total_loss += integrating_pid_loss
-                meter.update(
-                    {
-                        "integrating_pid_loss": integrating_pid_loss.item(),
-                    }
-                )
+                # # Modal integration and propagation
+                # assert (vis_labels == inf_labels).all()
+                # integrating_feat_map, integrating_labels = feat_map_integrating(backbone_feat_map, labels)
+                # integrating_feat = net.modal_propagation_pooling(integrating_feat_map).squeeze()
+                # integrating_bn_feat, integrating_cls_score = net.modal_propagation_classifier(integrating_feat)
+                # integrating_pid_loss = criterion.id(integrating_cls_score, integrating_labels)
+                # total_loss += integrating_pid_loss
+                # meter.update(
+                #     {
+                #         "integrating_pid_loss": integrating_pid_loss.item(),
+                #     }
+                # )
 
-                student_logits = backbone_cls_score
-                teacher_logits = torch.cat([integrating_cls_score, integrating_cls_score], dim=0)
-                modal_propagation_loss = net.modal_propagation(student_logits, teacher_logits)
-                total_loss += 0.01 * modal_propagation_loss
-                meter.update(
-                    {
-                        "modal_propagation_loss": modal_propagation_loss.item(),
-                    }
-                )
+                # student_logits = backbone_cls_score
+                # teacher_logits = torch.cat([integrating_cls_score, integrating_cls_score], dim=0)
+                # modal_propagation_loss = net.modal_propagation(student_logits, teacher_logits)
+                # total_loss += 0.01 * modal_propagation_loss
+                # meter.update(
+                #     {
+                #         "modal_propagation_loss": modal_propagation_loss.item(),
+                #     }
+                # )
 
                 optimizer.zero_grad()
                 total_loss.backward()
