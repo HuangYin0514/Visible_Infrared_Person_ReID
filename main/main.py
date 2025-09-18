@@ -140,6 +140,11 @@ def run(config):
                 total_loss += interaction_pid_loss
                 meter.update({"interaction_pid_loss": interaction_pid_loss.item()})
 
+                # ---- Propagation  ----
+                modal_propagation_loss = net.propagation(student_logits=backbone_cls_score, teacher_logits=interaction_cls_score)
+                total_loss += 0.01 * modal_propagation_loss
+                meter.update({"modal_propagation_loss": modal_propagation_loss.item()})
+
                 optimizer.zero_grad()
                 total_loss.backward()
                 optimizer.step()
