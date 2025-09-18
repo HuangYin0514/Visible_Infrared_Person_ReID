@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
-from model_aux_tool import *
+
+# from model_aux_tool import *
 
 
 class Interaction(nn.Module):
