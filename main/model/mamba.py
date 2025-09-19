@@ -1,4 +1,5 @@
 import math
+import numbers
 
 import torch
 import torch.nn as nn
@@ -6,192 +7,88 @@ import torch.nn.functional as F
 from einops import einsum, rearrange, repeat
 
 
-class CrossModalMamba(nn.Module):
+class MAMBA(nn.Module):
     def __init__(self, in_cdim=2048, hidden_cdim=96):
-        super(CrossModalMamba, self).__init__()
-        # hidden_cdim 实际是ssm中运行维度的一半，在代码中未直接调用
+        super(MAMBA, self).__init__()
 
-        ssm_ratio = 2
-        d_inner = hidden_cdim * ssm_ratio  # 实际ssm过程中的维度
-        d_proj = d_inner * 2  # 投影x和z
+        d_inner = hidden_cdim * 2
+        d_proj = d_inner * 2
 
-        cross_modal_ratio = 2
-        part_num = 6
-        self.part_num = part_num
-
-        self.pool_size = (part_num, 1)
-        self.pool = nn.AdaptiveAvgPool2d(self.pool_size)
-
-        # Mamba block
-        self.in_proj = nn.Conv2d(in_cdim * cross_modal_ratio, d_proj, 1, 1)
-        self.ssm = drqssm(d_model=hidden_cdim)
+        self.norm = LayerNorm(in_cdim, "with_bias")
+        self.in_proj = nn.Conv2d(in_cdim, d_proj, 1, 1)
+        self.ssm = SSM(d_model=hidden_cdim)
+        self.out_proj = nn.Conv2d(d_inner, in_cdim, 1, 1)
         self.act = nn.SiLU()
-        self.out_proj = nn.Conv2d(d_inner, in_cdim * cross_modal_ratio, 1, 1)
 
-        self.cbr = nn.Sequential(
-            nn.Conv2d(in_cdim, in_cdim, 3, 1, 1),
-            nn.BatchNorm2d(in_cdim),
-            nn.ReLU(),
-        )
-        self.sigmoid = nn.Sigmoid()
-        self.drop_path = DropPath(0.5)
+    def forward(self, feat_map):
+        B, C, H, W = feat_map.shape
 
-    def mamba_core(self, feat):
-        B, C, H, W = feat.shape  # [B, C, H, W]
-        mamba_xz = self.in_proj(feat)  # [B, C, H, W]
-        mamba_x, mamba_z = mamba_xz.chunk(2, dim=1)
-        ssm_out = self.ssm(mamba_x.flatten(2))  # [B, HW, C]
-        ssm_out = rearrange(ssm_out, "b (h w) c -> b c h w", h=H, w=W)  # [B, C, H, W]
-        ssm_out = ssm_out * self.act(mamba_z)  # [B, C, H, W]
-        ssm_out = self.out_proj(ssm_out)  # [B, C, H, W]
-        return ssm_out  # [B, C, H, W]
-
-    def forward(self, vis_feat, inf_feat):
-        B, C, H, W = vis_feat.shape
-
-        vis_pool_feat = self.pool(vis_feat)  # [B, C, H, W]
-        inf_pool_feat = self.pool(inf_feat)
-        vis_skip_pool_feat = vis_pool_feat
-        inf_skip_pool_feat = inf_pool_feat
-
-        modal_x = torch.stack([vis_pool_feat, inf_pool_feat], dim=2)
-        modal_x = rearrange(modal_x, "B hidden s2 H W -> B (hidden s2) H W")  # [B, C, H, W]
-        ssm_out = self.mamba_core(modal_x)  # [B, C, H, W]
-        vis_out = ssm_out[:, 0::2]  # [B, C, H, W]
-        inf_out = ssm_out[:, 1::2]
-
-        vis_out = self.drop_path(vis_out) + vis_skip_pool_feat
-        inf_out = self.drop_path(inf_out) + inf_skip_pool_feat
-
-        vis_out = self.cbr(vis_out)
-        inf_out = self.cbr(inf_out)
-
-        vis_att = self.sigmoid(vis_out)  # [B, C, H, W]
-        inf_att = self.sigmoid(inf_out)
-
-        vis_feat_list_out = []
-        inf_feat_list_out = []
-        rows_per_part = H // self.part_num
-        for pi in range(self.part_num):
-            start = pi * rows_per_part
-            end = (pi + 1) * rows_per_part
-            vis_feat_out_i = vis_feat[:, :, start:end, :] * vis_att[:, :, pi : pi + 1, :]
-            inf_feat_out_i = inf_feat[:, :, start:end, :] * inf_att[:, :, pi : pi + 1, :]
-            vis_feat_list_out.append(vis_feat_out_i)
-            inf_feat_list_out.append(inf_feat_out_i)
-
-        vis_feat_out = torch.cat(vis_feat_list_out, dim=2)  # [B, C, H, W]
-        inf_feat_out = torch.cat(inf_feat_list_out, dim=2)
-
-        return vis_feat_out, inf_feat_out
+        feat_map = self.norm(feat_map)
+        xz = self.in_proj(feat_map)
+        x, z = xz.chunk(2, dim=1)
+        b, c, h, w = x.shape
+        ssm_out = self.ssm(x.flatten(2))  # [B, C, H, W] -> [B, C, H*W] -> [B, H*W, C]
+        ssm_out = rearrange(ssm_out, "b (h w) c -> b c h w", h=h, w=w)
+        out = self.out_proj(ssm_out)
+        return out
 
 
-####################################################################################
-# class CrossModalMamba(nn.Module):
-#     def __init__(self, in_cdim=2048, hidden_cdim=96):
-#         super(CrossModalMamba, self).__init__()
+#############################################################
+class LayerNorm(nn.Module):
+    def __init__(self, dim, LayerNorm_type):
+        super(LayerNorm, self).__init__()
+        if LayerNorm_type == "BiasFree":
+            self.body = BiasFree_LayerNorm(dim)
+        else:
+            self.body = WithBias_LayerNorm(dim)
 
-#         d_inner = hidden_cdim * 2
-#         d_proj = d_inner * 2
-
-#         self.pool_size = (6, 1)
-#         self.pool = nn.AdaptiveAvgPool2d(self.pool_size)
-
-#         # Mamba block
-#         self.in_proj = nn.Conv2d(in_cdim * 2, d_proj, 1, 1)
-#         self.ssm = drqssm(d_model=hidden_cdim)
-#         self.act = nn.SiLU()
-#         # self.out_proj = nn.Conv2d(d_inner, in_cdim, 1, 1)
-
-#         self.out_pool = nn.AdaptiveAvgPool2d(1)
-#         self.out_proj = nn.Conv2d(d_inner, in_cdim, 1, 1)
-#         self.sigmoid = nn.Sigmoid()
-
-#     def forward(self, vis_feat, inf_feat):
-#         B, C, H, W = vis_feat.shape
-#         vis_feat = self.pool(vis_feat)  # [B, C, H, W] -> [B, C, size[0], size[1]]
-#         inf_feat = self.pool(inf_feat)
-
-#         modal_x = torch.stack([vis_feat, inf_feat], dim=2)  # [B, C, 2, H, W]
-#         modal_x = rearrange(modal_x, "B hidden s2 H W -> B (hidden s2) H W")  # # [B, C*2, H, W]
-
-#         # mamba block
-#         mamba_xz = self.in_proj(modal_x)  # [B, C, H, W] -> [B, hidden_cdim*2*2, H, W]
-#         mamba_x, mamba_z = mamba_xz.chunk(2, dim=1)  # [B, hidden_cdim*2, H, W],[B, hidden_cdim*2, H, W]
-#         B, C_token, H_token, W_token = modal_x.shape
-#         ssm_out = self.ssm(mamba_x.flatten(2))  # [B, C, H, W] -> [B, C, H*W] -> [B, H*W, C]
-#         ssm_out = rearrange(ssm_out, "b (h w) c -> b c h w", h=H_token, w=W_token)
-#         ssm_out = ssm_out * self.act(mamba_z)
-
-#         M_con = self.out_proj(self.out_pool(ssm_out))
-#         # M_con = rearrange(M_con, "b (c d)-> b c d", c=C)
-#         # M_con = M_con.view(B, C, C)
-#         M_con = self.sigmoid(M_con)
-#         return M_con
+    def forward(self, x):
+        h, w = x.shape[-2:]
+        return to_4d(self.body(to_3d(x)), h, w)
 
 
-####################################################################################
-# class MAMBA(nn.Module):
-#     def __init__(self, in_cdim=2048, hidden_cdim=768):
-#         super(MAMBA, self).__init__()
+class BiasFree_LayerNorm(nn.Module):
+    def __init__(self, normalized_shape):
+        super(BiasFree_LayerNorm, self).__init__()
+        if isinstance(normalized_shape, numbers.Integral):
+            normalized_shape = (normalized_shape,)
+        normalized_shape = torch.Size(normalized_shape)
 
-#         d_inner = hidden_cdim * 2
-#         d_proj = d_inner * 2
+        assert len(normalized_shape) == 1
 
-#         self.pool_size = (6, 1)
-#         self.pool = nn.AdaptiveAvgPool2d(self.pool_size)
+        self.weight = nn.Parameter(torch.ones(normalized_shape))
+        self.normalized_shape = normalized_shape
 
-#         self.in_proj = nn.Conv2d(in_cdim, d_proj, 1, 1)
-#         self.ssm = drqssm(d_model=hidden_cdim)
-#         self.out_proj = nn.Conv2d(d_inner, in_cdim, 1, 1)
-#         self.act = nn.SiLU()
-
-#     def forward(self, feat):
-#         B, C, H, W = feat.shape
-#         skip = feat
-#         feat = self.pool(feat)  # [B, C, H, W] -> [B, C, size[0], size[1]]
-
-#         xz = self.in_proj(feat)
-#         x, z = xz.chunk(2, dim=1)
-#         b, c, h, w = x.shape
-#         ssm_out = self.ssm(x.flatten(2))  # [B, C, H, W] -> [B, C, H*W] -> [B, H*W, C]
-#         ssm_out = rearrange(ssm_out, "b (h w) c -> b c h w", h=h, w=w)
-#         out = ssm_out * self.act(z)
-#         out = self.out_proj(out)
-#         out = F.interpolate(out, size=(H, W), mode="bilinear", align_corners=False)
-#         return out
+    def forward(self, x):
+        sigma = x.var(-1, keepdim=True, unbiased=False)
+        return x / torch.sqrt(sigma + 1e-5) * self.weight
 
 
-####################################################################################
+class WithBias_LayerNorm(nn.Module):
+    def __init__(self, normalized_shape):
+        super(WithBias_LayerNorm, self).__init__()
+        if isinstance(normalized_shape, numbers.Integral):
+            normalized_shape = (normalized_shape,)
+        normalized_shape = torch.Size(normalized_shape)
+
+        assert len(normalized_shape) == 1
+
+        self.weight = nn.Parameter(torch.ones(normalized_shape))
+        self.bias = nn.Parameter(torch.zeros(normalized_shape))
+        self.normalized_shape = normalized_shape
+
+    def forward(self, x):
+        mu = x.mean(-1, keepdim=True)
+        sigma = x.var(-1, keepdim=True, unbiased=False)
+        return (x - mu) / torch.sqrt(sigma + 1e-5) * self.weight + self.bias
 
 
-# class MAMBA(nn.Module):
-#     def __init__(self, in_cdim=2048, hidden_cdim=768):
-#         super(MAMBA, self).__init__()
+def to_4d(x, h, w):
+    return rearrange(x, "b (h w) c -> b c h w", h=h, w=w)
 
-#         d_inner = hidden_cdim * 2
-#         d_proj = d_inner * 2
 
-#         self.pool_size = (6, 1)
-#         self.pool = nn.AdaptiveAvgPool2d(self.pool_size)
-
-#         self.in_proj = nn.Conv2d(in_cdim, d_proj, 1, 1)
-#         self.ssm = drqssm(d_model=hidden_cdim)
-#         self.out_proj = nn.Conv2d(d_inner, in_cdim, 1, 1)
-#         self.act = nn.SiLU()
-
-#     def forward(self, feat):
-#         B, C, H, W = feat.shape
-#         feat = self.pool(feat)  # [B, C, H, W] -> [B, C, size[0], size[1]]
-
-#         xz = self.in_proj(feat)
-#         x, z = xz.chunk(2, dim=1)
-#         b, c, h, w = x.shape
-#         ssm_out = self.ssm(x.flatten(2))  # [B, C, H, W] -> [B, C, H*W] -> [B, H*W, C]
-#         ssm_out = rearrange(ssm_out, "b (h w) c -> b c h w", h=h, w=w)
-#         out = self.out_proj(ssm_out)
-#         out = F.interpolate(out, size=(H, W), mode="bilinear", align_corners=False)
-#         return out
+def to_3d(x):
+    return rearrange(x, "b c h w -> b (h w) c")
 
 
 #############################################################
@@ -224,51 +121,8 @@ class DropPath(nn.Module):
         return drop_path(x, self.drop_prob, self.training)
 
 
-def cross_selective_scan(
-    x: torch.Tensor = None,
-    x_proj_weight: torch.Tensor = None,
-    dt_projs_weight: torch.Tensor = None,
-    A_logs: torch.Tensor = None,
-    Ds: torch.Tensor = None,
-    out_norm: torch.nn.Module = None,
-):
-    # out_norm: whatever fits (B, L, C); LayerNorm; Sigmoid; Softmax(dim=1);...
-    B, D, L = x.shape
-    D, N = A_logs.shape
-    D, R = dt_projs_weight.shape
-
-    x_dbl = F.linear(rearrange(x, "b d l -> (b l) d"), x_proj_weight)
-
-    dts, Bs, Cs = torch.split(x_dbl, [R, N, N], dim=-1)
-    dts = dt_projs_weight @ dts.t()
-    dts = F.softplus(dts)  # ADD for mine
-    dts = rearrange(dts, "d (b l) -> b l d", l=L)
-    Bs = rearrange(Bs, "(b l) dstate -> b dstate l", l=L).contiguous()
-    Cs = rearrange(Cs, "(b l) dstate -> b dstate l", l=L).contiguous()
-    As = -torch.exp(A_logs.to(torch.float))  # (D, d_state)
-    Ds = Ds.to(torch.float)  # (D)
-
-    # Step 1: Discretize continuous parameters (A, B)
-    dt_A = torch.exp(einsum(dts, As, "B L D, D dstate -> B L D dstate"))
-    dt_B_x = einsum(dts, Bs, x, "B L D, B dstate L, B D L -> B L D dstate")
-
-    # Step 2: Perform selective scan
-    u = torch.zeros((B, D, N), device=dt_A.device)
-    ys = []
-    for i in range(L):
-        u = dt_A[:, i] * u + dt_B_x[:, i]
-        y = einsum(u, Cs[:, :, i], "B D dstate, B dstate -> B D")
-        ys.append(y)
-    y = torch.stack(ys, dim=-1)  # [B, D, L]
-    y = y + einsum(x, Ds, "B D L, D -> B D L")  # [B, D, L]
-
-    # Normalize output
-    y = rearrange(y, "b d l -> b l d")
-    y = out_norm(y)
-    return y.to(x.dtype)
-
-
-class drqssm(nn.Module):
+#############################################################
+class SSM(nn.Module):
     def __init__(
         self,
         d_model=96,
@@ -280,7 +134,6 @@ class drqssm(nn.Module):
         ssm_ratio=2.0,
         dt_rank="auto",
         dropout=0.0,
-        # dt init ==============
         dt_min=0.001,
         dt_max=0.1,
         dt_init="random",
@@ -289,7 +142,6 @@ class drqssm(nn.Module):
         dt_init_floor=1e-4,
     ):
         super().__init__()
-        # print('newmamba')
         factory_kwargs = {"device": device, "dtype": dtype}
         d_inner = int(ssm_ratio * d_model)
         dt_rank = math.ceil(d_model / 16) if dt_rank == "auto" else dt_rank
@@ -310,9 +162,6 @@ class drqssm(nn.Module):
         # dt proj ============================
         self.dt_projs = self.dt_init(dt_rank, d_inner, dt_scale, dt_init, dt_min, dt_max, dt_init_floor, **factory_kwargs)
 
-        # softmax | sigmoid | dwconv | norm ===========================
-
-        self.out_norm = nn.LayerNorm(d_inner)
         # A, D =======================================
         self.A_logs = self.A_log_init(d_state, d_inner, merge=True)  # (K * D, N)
         self.Ds = self.D_init(d_inner, merge=True)  # (K * D)
@@ -370,42 +219,67 @@ class drqssm(nn.Module):
         D._no_weight_decay = True
         return D
 
-    def forward_core(self, x: torch.Tensor, cross_selective_scan=cross_selective_scan):
-        return cross_selective_scan(
+    def cross_selective_scan(
+        self,
+        x: torch.Tensor = None,
+        x_proj_weight: torch.Tensor = None,
+        dt_projs_weight: torch.Tensor = None,
+        A_logs: torch.Tensor = None,
+        Ds: torch.Tensor = None,
+    ):
+        B, D, L = x.shape
+        D, N = A_logs.shape
+        D, R = dt_projs_weight.shape
+
+        x_dbl = F.linear(rearrange(x, "b d l -> (b l) d"), x_proj_weight)
+
+        dts, Bs, Cs = torch.split(x_dbl, [R, N, N], dim=-1)
+        dts = dt_projs_weight @ dts.t()
+        dts = F.softplus(dts)  # ADD for mine
+        dts = rearrange(dts, "d (b l) -> b l d", l=L)
+        Bs = rearrange(Bs, "(b l) dstate -> b dstate l", l=L).contiguous()
+        Cs = rearrange(Cs, "(b l) dstate -> b dstate l", l=L).contiguous()
+        As = -torch.exp(A_logs.to(torch.float))  # (D, d_state)
+        Ds = Ds.to(torch.float)  # (D)
+
+        # Step 1: Discretize continuous parameters (A, B)
+        dt_A = torch.exp(einsum(dts, As, "B L D, D dstate -> B L D dstate"))
+        dt_B_x = einsum(dts, Bs, x, "B L D, B dstate L, B D L -> B L D dstate")
+
+        # Step 2: Perform selective scan
+        u = torch.zeros((B, D, N), device=dt_A.device)
+        ys = []
+        for i in range(L):
+            u = dt_A[:, i] * u + dt_B_x[:, i]
+            y = einsum(u, Cs[:, :, i], "B D dstate, B dstate -> B D")
+            ys.append(y)
+        y = torch.stack(ys, dim=-1)  # [B, D, L]
+        y = y + einsum(x, Ds, "B D L, D -> B D L")  # [B, D, L]
+
+        # Normalize output
+        y = rearrange(y, "b d l -> b l d")
+        return y.to(x.dtype)
+
+    def forward(self, x: torch.Tensor):
+        y = self.cross_selective_scan(
             x,
             self.x_proj.weight,
             self.dt_projs.weight,
             self.A_logs,
             self.Ds,
-            out_norm=self.out_norm,
         )
-
-    def forward(self, x: torch.Tensor, **kwargs):
-        y = self.forward_core(x)
         return y
 
 
 if __name__ == "__main__":
-
-    # # 创建输入数据
-    # inp_1 = torch.randn(2, 2048, 18, 9)
-    # print("input.shape", inp_1.shape)
-
-    # model = MAMBA(in_cdim=2048, hidden_cdim=256)
-    # outputs = model(inp_1)
-    # print(outputs.shape)
-
-    # # # 创建输入数据
-    inp_1 = torch.randn(2, 2048, 18, 9)
-    inp_2 = torch.randn(2, 2048, 18, 9)
+    inp_1 = torch.randn(2, 96 * 2, 6)
     print("input.shape", inp_1.shape)
+    model = SSM(d_model=96)
+    outputs = model(inp_1)
+    print(outputs.shape)
 
-    # # 初始化模型
-    model = CrossModalMamba(in_cdim=2048, hidden_cdim=96)
-
-    # # 前向传播
-    outputs = model(inp_1, inp_2)
-
-    # # # 打印输出形状
-    for output in outputs:
-        print(output.shape)
+    inp_1 = torch.randn(2, 2048, 3, 2)
+    print("input.shape", inp_1.shape)
+    model = MAMBA(in_cdim=2048, hidden_cdim=96)
+    outputs = model(inp_1)
+    print(outputs.shape)
