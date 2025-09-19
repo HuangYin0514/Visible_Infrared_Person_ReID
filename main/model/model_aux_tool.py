@@ -2,6 +2,55 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
+#############################################################
+
+
+class Gate_Fusion(nn.Module):
+    """
+
+    https://arxiv.org/pdf/2009.14082
+
+    https://0809zheng.github.io/2020/12/01/aff.html
+
+    基于情感表征校准的图文情感分析模型
+
+    """
+
+    def __init__(self, c_dim):
+        super(Gate_Fusion, self).__init__()
+        self.c_dim = c_dim
+
+        r = 4
+
+        inter_c_dim = int(c_dim // r)
+
+        self.att = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
+            nn.Conv2d(c_dim, inter_c_dim, kernel_size=1, stride=1, padding=0),
+            nn.BatchNorm2d(inter_c_dim),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(inter_c_dim, c_dim, kernel_size=1, stride=1, padding=0),
+            nn.BatchNorm2d(c_dim),
+        )
+        self.sigmoid = nn.Sigmoid()
+
+        self.value_stable = nn.Sequential(
+            nn.Conv2d(c_dim, c_dim, kernel_size=1, stride=1, padding=0),
+            nn.BatchNorm2d(c_dim),
+            nn.ReLU(inplace=True),
+        )
+
+    def forward(self, feat_1, feat_2):
+        # feat_1 -> H
+        # feat_2 -> E
+        # F = g * H + (1-g) * E
+
+        gate = self.sigmoid(self.att(feat_1))
+        feat = feat_1 * gate + feat_2 * (1 - gate)
+        feat = self.value_stable(feat)
+
+        return feat
+
 
 #############################################################
 def drop_path(x, drop_prob: float = 0.0, training: bool = False):

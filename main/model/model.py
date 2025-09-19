@@ -2,11 +2,11 @@ import copy
 
 import torch
 import torch.nn as nn
-from .resnet import resnet50
-from .resnet_ibn_a import resnet50_ibn_a
 
 from .gem_pool import GeneralizedMeanPoolingP
-from .model_main_tool import Interaction, Propagation
+from .model_main_tool import Calibration, Interaction, Propagation
+from .resnet import resnet50
+from .resnet_ibn_a import resnet50_ibn_a
 
 
 class ReIDNet(nn.Module):
@@ -26,8 +26,13 @@ class ReIDNet(nn.Module):
 
         # ------------- Interaction -----------------------
         self.interaction = Interaction()
-        self.interaction_pooling = GeneralizedMeanPoolingP()
-        self.interaction_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
+        # self.interaction_pooling = GeneralizedMeanPoolingP()
+        # self.interaction_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
+
+        # ------------- Calibration -----------------------
+        self.calibration = Calibration()
+        self.calibration_pooling = GeneralizedMeanPoolingP()
+        self.calibration_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
 
         # ------------- Propagation -----------------------
         self.propagation = Propagation(T=4)

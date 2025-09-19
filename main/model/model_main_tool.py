@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 from torch.nn import functional as F
 
+from .model_aux_tool import Gate_Fusion
+
 
 class Interaction(nn.Module):
 
@@ -25,6 +27,25 @@ class Interaction(nn.Module):
         inf_feat_map = self.inf_add_vis(vis_feat_map) + inf_feat_map
         feat_map = torch.cat([vis_feat_map, inf_feat_map], dim=0)
         return feat_map
+
+
+class Calibration(nn.Module):
+
+    def __init__(self):
+        super(Calibration, self).__init__()
+
+        c_dim = 2048
+        self.vis_gate_calibration = Gate_Fusion(c_dim)
+        self.inf_gate_calibration = Gate_Fusion(c_dim)
+
+    def forward(self, feat_map, res_feat_map):
+        vis_feat, inf_feat = torch.chunk(feat_map, 2, dim=0)
+        res_vis_feat, res_inf_feat = torch.chunk(res_feat_map, 2, dim=0)
+        vis_feat = self.vis_gate_calibration(vis_feat, res_vis_feat)
+        inf_feat = self.inf_gate_calibration(inf_feat, res_inf_feat)
+
+        calibration_feat_map = torch.cat([vis_feat, inf_feat], dim=0)
+        return calibration_feat_map
 
 
 class Propagation(nn.Module):
