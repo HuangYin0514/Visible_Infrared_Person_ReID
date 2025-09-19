@@ -8,14 +8,12 @@ import torch.nn.functional as F
 import torch.utils.data as data
 import util
 from criterion import Criterion
-from data_loader import Data_Loder
+from data import Data_Loder, IdentitySampler
 from eval_metrics import eval_sysu
-from identity_sampler import IdentitySampler
 from model import ReIDNet
 from optimizer import Optimizer
 from scheduler import Scheduler
 from tqdm import tqdm
-from vi_tool import *
 
 import wandb
 

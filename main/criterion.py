@@ -1,6 +1,6 @@
 import torch.nn as nn
-from hcc import hcc
-from ori_triplet_loss import OriTripletLoss
+from loss.hcc import hcc
+from loss.ori_triplet_loss import OriTripletLoss
 
 
 class Criterion:

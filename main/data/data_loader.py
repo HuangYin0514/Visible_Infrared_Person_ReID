@@ -4,9 +4,10 @@ import time
 import numpy as np
 import torch.utils.data as data
 import torchvision.transforms as transforms
-from data_manager import process_gallery_sysu, process_query_sysu
 from PIL import Image
-from random_erasing import RandomErasing
+
+from .data_manager import process_gallery_sysu, process_query_sysu
+from .random_erasing import RandomErasing
 
 
 class Data_Loder:

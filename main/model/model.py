@@ -2,10 +2,11 @@ import copy
 
 import torch
 import torch.nn as nn
-from gem_pool import GeneralizedMeanPoolingP
-from model_main_tool import Interaction, Propagation
-from resnet import resnet50
-from resnet_ibn_a import resnet50_ibn_a
+from .resnet import resnet50
+from .resnet_ibn_a import resnet50_ibn_a
+
+from .gem_pool import GeneralizedMeanPoolingP
+from .model_main_tool import Interaction, Propagation
 
 
 class ReIDNet(nn.Module):
