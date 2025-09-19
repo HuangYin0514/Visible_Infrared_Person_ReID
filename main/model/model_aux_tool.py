@@ -30,7 +30,7 @@ class Gate_Fusion(nn.Module):
             nn.BatchNorm2d(inter_c_dim),
             nn.ReLU(inplace=True),
             nn.Conv2d(inter_c_dim, c_dim, kernel_size=1, stride=1, padding=0),
-            nn.BatchNorm2d(c_dim),
+            # nn.BatchNorm2d(c_dim),
         )
         self.sigmoid = nn.Sigmoid()
 
