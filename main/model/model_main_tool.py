@@ -59,10 +59,11 @@ class Interaction(nn.Module):
         vis_part_feat_map = torch.chunk(vis_feat_map, self.part_num, dim=2)  # list(self.part_num)
         inf_part_feat_map = torch.chunk(inf_feat_map, self.part_num, dim=2)
 
-        mixed_feat = torch.zeros([int(B // 2), C, self.part_num * 2, 1]).to(feat_map.device)  # [B//2, C, self.part_num * 2, 1]
+        mixed_feat = []
         for i in range(self.part_num):
-            mixed_feat[:, :, 2 * i, :] = self.vis_part_pool[i](vis_part_feat_map[i]).squeeze(-1)
-            mixed_feat[:, :, 2 * i + 1, :] = self.inf_part_pool[i](inf_part_feat_map[i]).squeeze(-1)
+            mixed_feat.append(self.vis_part_pool[i](vis_part_feat_map[i]).squeeze(-1))
+            mixed_feat.append(self.inf_part_pool[i](inf_part_feat_map[i]).squeeze(-1))
+        mixed_feat = torch.stack(mixed_feat, dim=2)  # [B//2, C, self.part_num * 2, 1]
 
         # Mamba
         mamba_feat = self.mamba(mixed_feat)  # [B//2, C, self.part_num * 2, 1]
