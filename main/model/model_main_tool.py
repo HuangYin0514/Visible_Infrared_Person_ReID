@@ -1,3 +1,5 @@
+import copy
+
 import torch
 import torch.nn as nn
 from torch.nn import functional as F
@@ -13,17 +15,27 @@ class Interaction(nn.Module):
 
         self.part_num = 6
 
-        self.pool = nn.AdaptiveAvgPool2d((self.part_num, 1))
+        self.vis_part_pool = nn.ModuleList()
+        self.vis_part_att = nn.ModuleList()
+        for i in range(self.part_num):
+            self.vis_part_pool.append(nn.AdaptiveAvgPool2d((1, 1)))
+            self.vis_part_att.append(
+                nn.Sequential(
+                    nn.Conv2d(2048, 2048, kernel_size=1, stride=1, padding=0),
+                    nn.Sigmoid(),
+                )
+            )
 
-        self.mamba = MAMBA(in_cdim=2048, hidden_cdim=96)
+        self.inf_part_pool = copy.deepcopy(self.vis_part_pool)
+        self.inf_part_att = copy.deepcopy(self.vis_part_att)
 
-        self.mamba_att = nn.Sequential(
+        self.mamba = nn.Sequential(
             nn.Conv2d(2048, 2048, kernel_size=1, stride=1, padding=0),
             nn.BatchNorm2d(2048),
             nn.ReLU(inplace=True),
-            nn.Sigmoid(),
         )
-        # self.sigmoid = nn.Sigmoid()
+
+        # self.mamba = MAMBA(in_cdim=2048, hidden_cdim=96)
 
         self.vis_add_inf = nn.Sequential(
             nn.Conv2d(2048, 2048, kernel_size=1, stride=1, padding=0),
@@ -41,29 +53,32 @@ class Interaction(nn.Module):
 
         vis_feat_map, inf_feat_map = torch.chunk(feat_map, 2, dim=0)
 
-        # Split Horizon Strategy
-        vis_part_feat, inf_part_feat = self.pool(vis_feat_map), self.pool(inf_feat_map)
+        # Split Horizon Strategy & Patch mixed reordering
+        vis_part_feat_map = torch.chunk(vis_feat_map, self.part_num, dim=2)
+        inf_part_feat_map = torch.chunk(inf_feat_map, self.part_num, dim=2)
 
-        # Patch mixed reordering
-        fused_feat = torch.ones([int(B // 2), C, self.part_num * 2, 1]).to(feat_map.device)
+        mixed_feat = torch.zeros([int(B // 2), C, self.part_num * 2, 1]).to(feat_map.device)
         for i in range(self.part_num):
-            fused_feat[:, :, 2 * i] = vis_part_feat[:, :, i, :]
-            fused_feat[:, :, 2 * i + 1] = inf_part_feat[:, :, i, :]
+            mixed_feat[:, :, 2 * i, :] = self.vis_part_pool[i](vis_part_feat_map[i]).squeeze(-1)
+            mixed_feat[:, :, 2 * i + 1, :] = self.inf_part_pool[i](inf_part_feat_map[i]).squeeze(-1)
 
         # Mamba
-        fused_feat_weight = self.mamba_att(fused_feat)
+        mamba_feat = self.mamba(mixed_feat)
+        vis_mamba_feat = mamba_feat[:, :, 0::2].unsqueeze(-1)
+        inf_mamba_feat = mamba_feat[:, :, 1::2].unsqueeze(-1)
 
-        # Enhance
-        vis_feat_weight = fused_feat_weight[:, :, 0::2]
-        inf_feat_weight = fused_feat_weight[:, :, 1::2]
-        vis_feat_weight = torch.repeat_interleave(vis_feat_weight, repeats=3, dim=2)
-        inf_feat_weight = torch.repeat_interleave(inf_feat_weight, repeats=3, dim=2)
-        complementary_vis_feat_map = vis_feat_weight * vis_feat_map
-        complementary_inf_feat_map = inf_feat_weight * inf_feat_map
+        # Weighted Fusion
+        vis_weighted_feat_map = []
+        inf_weighted_feat_map = []
+        for i in range(self.part_num):
+            vis_weighted_feat_map.append(self.vis_part_att[i](vis_mamba_feat[:, :, i]) * vis_part_feat_map[i])
+            inf_weighted_feat_map.append(self.inf_part_att[i](inf_mamba_feat[:, :, i]) * inf_part_feat_map[i])
+        vis_weighted_feat_map = torch.cat(vis_weighted_feat_map, dim=2)
+        inf_weighted_feat_map = torch.cat(inf_weighted_feat_map, dim=2)
 
         # Fusion
-        vis_feat_map = self.vis_add_inf(complementary_inf_feat_map + inf_feat_map) + vis_feat_map
-        inf_feat_map = self.inf_add_vis(complementary_vis_feat_map + vis_feat_map) + inf_feat_map
+        vis_feat_map = self.vis_add_inf(inf_weighted_feat_map + inf_feat_map) + vis_feat_map
+        inf_feat_map = self.inf_add_vis(vis_weighted_feat_map + vis_feat_map) + inf_feat_map
         feat_map = torch.cat([vis_feat_map, inf_feat_map], dim=0)
         return feat_map
 
