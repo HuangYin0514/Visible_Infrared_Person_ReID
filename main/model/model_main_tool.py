@@ -62,8 +62,8 @@ class Interaction(nn.Module):
         complementary_inf_feat_map = inf_feat_weight * inf_feat_map
 
         # Fusion
-        vis_feat_map = self.vis_add_inf(complementary_inf_feat_map) + vis_feat_map
-        inf_feat_map = self.inf_add_vis(complementary_vis_feat_map) + inf_feat_map
+        vis_feat_map = self.vis_add_inf(complementary_inf_feat_map + inf_feat_map) + vis_feat_map
+        inf_feat_map = self.inf_add_vis(complementary_vis_feat_map + vis_feat_map) + inf_feat_map
         feat_map = torch.cat([vis_feat_map, inf_feat_map], dim=0)
         return feat_map
 
