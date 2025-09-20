@@ -18,9 +18,11 @@ class Interaction(nn.Module):
         self.vis_part_pool = nn.ModuleList()
         self.vis_part_att = nn.ModuleList()
         for i in range(self.part_num):
-            self.vis_part_pool.append(nn.AdaptiveAvgPool2d((1, 1)))
+            self.vis_part_pool.append(nn.AdaptiveMaxPool2d((1, 1)))
             self.vis_part_att.append(
                 nn.Sequential(
+                    nn.Conv2d(2048, 2048, kernel_size=1, stride=1, padding=0),
+                    nn.ReLU(inplace=True),
                     nn.Conv2d(2048, 2048, kernel_size=1, stride=1, padding=0),
                     nn.Sigmoid(),
                 )
@@ -57,22 +59,24 @@ class Interaction(nn.Module):
         vis_part_feat_map = torch.chunk(vis_feat_map, self.part_num, dim=2)  # list(self.part_num)
         inf_part_feat_map = torch.chunk(inf_feat_map, self.part_num, dim=2)
 
-        mixed_feat = torch.zeros([int(B // 2), C, self.part_num * 2, 1]).to(feat_map.device)  # torch.zeros([B//2, C, self.part_num * 2, 1])
+        mixed_feat = torch.zeros([int(B // 2), C, self.part_num * 2, 1]).to(feat_map.device)  # [B//2, C, self.part_num * 2, 1]
         for i in range(self.part_num):
             mixed_feat[:, :, 2 * i, :] = self.vis_part_pool[i](vis_part_feat_map[i]).squeeze(-1)
             mixed_feat[:, :, 2 * i + 1, :] = self.inf_part_pool[i](inf_part_feat_map[i]).squeeze(-1)
 
         # Mamba
-        mamba_feat = self.mamba(mixed_feat)  # torch.zeros([B//2, C, self.part_num * 2, 1])
-        vis_mamba_feat = mamba_feat[:, :, 0::2]  # torch.zeros([B//2, C, self.part_num, 1])
-        inf_mamba_feat = mamba_feat[:, :, 1::2]
+        mamba_feat = self.mamba(mixed_feat)  # [B//2, C, self.part_num * 2, 1]
+        vis_mamba_feat = mamba_feat[:, :, 0::2] + mixed_feat[:, :, 0::2]  # [B//2, C, self.part_num, 1]
+        inf_mamba_feat = mamba_feat[:, :, 1::2] + mixed_feat[:, :, 1::2]
 
         # Weighted Fusion
-        vis_weighted_feat_map = []  # torch.zeros([B//2, C, H, W])
+        vis_weighted_feat_map = []  # [B//2, C, H, W]
         inf_weighted_feat_map = []
         for i in range(self.part_num):
-            vis_weighted_feat_map.append(self.vis_part_att[i](vis_mamba_feat[:, :, i].unsqueeze(-1)) * vis_part_feat_map[i])
-            inf_weighted_feat_map.append(self.inf_part_att[i](inf_mamba_feat[:, :, i].unsqueeze(-1)) * inf_part_feat_map[i])
+            vis_weight_i = self.vis_part_att[i](vis_mamba_feat[:, :, i].unsqueeze(-1))
+            inf_weight_i = self.inf_part_att[i](inf_mamba_feat[:, :, i].unsqueeze(-1))
+            vis_weighted_feat_map.append(vis_weight_i * vis_part_feat_map[i])
+            inf_weighted_feat_map.append(inf_weight_i * inf_part_feat_map[i])
         vis_weighted_feat_map = torch.cat(vis_weighted_feat_map, dim=2)
         inf_weighted_feat_map = torch.cat(inf_weighted_feat_map, dim=2)
 
