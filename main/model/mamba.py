@@ -12,13 +12,14 @@ class MAMBA(nn.Module):
         super(MAMBA, self).__init__()
 
         d_inner = hidden_cdim * 2
-        d_proj = d_inner * 2
 
         self.norm = LayerNorm(in_cdim, "with_bias")
-        self.in_proj = nn.Conv2d(in_cdim, d_proj, 1, 1)
+        self.in_proj = nn.Conv2d(in_cdim, d_inner * 2, 1, 1)
         self.ssm = SSM(d_model=hidden_cdim)
         self.out_proj = nn.Conv2d(d_inner, in_cdim, 1, 1)
         self.act = nn.SiLU()
+
+        self.drop_path = DropPath(0.5)
 
     def forward(self, feat_map):
         B, C, H, W = feat_map.shape
@@ -29,8 +30,9 @@ class MAMBA(nn.Module):
         b, c, h, w = x.shape
         ssm_out = self.ssm(x.flatten(2))  # [B, C, H, W] -> [B, C, H*W] -> [B, H*W, C]
         ssm_out = rearrange(ssm_out, "b (h w) c -> b c h w", h=h, w=w)
+        ssm_out = ssm_out * self.act(z)  # [B, C, H, W]
         out = self.out_proj(ssm_out)
-        return out
+        return self.drop_path(out) + feat_map
 
 
 #############################################################
