@@ -54,25 +54,25 @@ class Interaction(nn.Module):
         vis_feat_map, inf_feat_map = torch.chunk(feat_map, 2, dim=0)
 
         # Split Horizon Strategy & Patch mixed reordering
-        vis_part_feat_map = torch.chunk(vis_feat_map, self.part_num, dim=2)
+        vis_part_feat_map = torch.chunk(vis_feat_map, self.part_num, dim=2)  # list(self.part_num)
         inf_part_feat_map = torch.chunk(inf_feat_map, self.part_num, dim=2)
 
-        mixed_feat = torch.zeros([int(B // 2), C, self.part_num * 2, 1]).to(feat_map.device)
+        mixed_feat = torch.zeros([int(B // 2), C, self.part_num * 2, 1]).to(feat_map.device)  # torch.zeros([B//2, C, self.part_num * 2, 1])
         for i in range(self.part_num):
             mixed_feat[:, :, 2 * i, :] = self.vis_part_pool[i](vis_part_feat_map[i]).squeeze(-1)
             mixed_feat[:, :, 2 * i + 1, :] = self.inf_part_pool[i](inf_part_feat_map[i]).squeeze(-1)
 
         # Mamba
-        mamba_feat = self.mamba(mixed_feat)
-        vis_mamba_feat = mamba_feat[:, :, 0::2].unsqueeze(-1)
-        inf_mamba_feat = mamba_feat[:, :, 1::2].unsqueeze(-1)
+        mamba_feat = self.mamba(mixed_feat)  # torch.zeros([B//2, C, self.part_num * 2, 1])
+        vis_mamba_feat = mamba_feat[:, :, 0::2]  # torch.zeros([B//2, C, self.part_num, 1])
+        inf_mamba_feat = mamba_feat[:, :, 1::2]
 
         # Weighted Fusion
-        vis_weighted_feat_map = []
+        vis_weighted_feat_map = []  # torch.zeros([B//2, C, H, W])
         inf_weighted_feat_map = []
         for i in range(self.part_num):
-            vis_weighted_feat_map.append(self.vis_part_att[i](vis_mamba_feat[:, :, i]) * vis_part_feat_map[i])
-            inf_weighted_feat_map.append(self.inf_part_att[i](inf_mamba_feat[:, :, i]) * inf_part_feat_map[i])
+            vis_weighted_feat_map.append(self.vis_part_att[i](vis_mamba_feat[:, :, i].unsqueeze(-1)) * vis_part_feat_map[i])
+            inf_weighted_feat_map.append(self.inf_part_att[i](inf_mamba_feat[:, :, i].unsqueeze(-1)) * inf_part_feat_map[i])
         vis_weighted_feat_map = torch.cat(vis_weighted_feat_map, dim=2)
         inf_weighted_feat_map = torch.cat(inf_weighted_feat_map, dim=2)
 
