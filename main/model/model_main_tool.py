@@ -67,8 +67,8 @@ class Interaction(nn.Module):
 
         # Mamba
         mamba_feat = self.mamba(mixed_feat)  # [B//2, C, self.part_num * 2, 1]
-        vis_mamba_feat = mamba_feat[:, :, 0::2] + mixed_feat[:, :, 0::2]  # [B//2, C, self.part_num, 1]
-        inf_mamba_feat = mamba_feat[:, :, 1::2] + mixed_feat[:, :, 1::2]
+        vis_mamba_feat = mamba_feat[:, :, 0::2]  # [B//2, C, self.part_num, 1]
+        inf_mamba_feat = mamba_feat[:, :, 1::2]
 
         # Weighted Fusion
         vis_weighted_feat_map = []  # [B//2, C, H, W]
