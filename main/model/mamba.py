@@ -28,7 +28,9 @@ class MAMBA(nn.Module):
         xz = self.in_proj(feat_map)
         x, z = xz.chunk(2, dim=1)
         b, c, h, w = x.shape
-        ssm_out = self.ssm(x.flatten(2))  # [B, C, H, W] -> [B, C, H*W] -> [B, H*W, C]
+        ssm_forward_out = self.ssm(x.flatten(2))  # [B, C, H, W] -> [B, C, H*W] -> [B, H*W, C]
+        ssm_backward_out = self.ssm(x.flatten(2).flip([-1]))
+        ssm_out = ssm_forward_out + ssm_backward_out.flip([1])
         ssm_out = rearrange(ssm_out, "b (h w) c -> b c h w", h=h, w=w)
         ssm_out = ssm_out * self.act(z)  # [B, C, H, W]
         out = self.out_proj(ssm_out)
