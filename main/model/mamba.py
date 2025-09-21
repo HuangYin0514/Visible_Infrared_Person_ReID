@@ -19,7 +19,7 @@ class MAMBA(nn.Module):
         self.out_proj = nn.Conv2d(d_inner, in_cdim, 1, 1)
         self.act = nn.SiLU()
 
-        self.drop_path = DropPath(0.5)
+        # self.drop_path = DropPath(0.5)
 
     def forward(self, feat_map):
         B, C, H, W = feat_map.shape
@@ -34,7 +34,7 @@ class MAMBA(nn.Module):
         ssm_out = rearrange(ssm_out, "b (h w) c -> b c h w", h=h, w=w)
         ssm_out = ssm_out * self.act(z)  # [B, C, H, W]
         out = self.out_proj(ssm_out)
-        return self.drop_path(out) + feat_map
+        return out
 
 
 #############################################################
