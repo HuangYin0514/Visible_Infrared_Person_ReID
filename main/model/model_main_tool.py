@@ -37,7 +37,7 @@ class Interaction(nn.Module):
         #     nn.ReLU(inplace=True),
         # )
 
-        self.mamba = MAMBA(in_cdim=2048, hidden_cdim=256)
+        self.mamba = MAMBA(in_cdim=2048, hidden_cdim=128)
 
         self.vis_add_inf = nn.Sequential(
             nn.Conv2d(2048, 2048, kernel_size=1, stride=1, padding=0),
@@ -67,8 +67,8 @@ class Interaction(nn.Module):
 
         # Mamba
         mamba_feat = self.mamba(mixed_feat)  # [B//2, C, self.part_num * 2, 1]
-        vis_mamba_feat = mamba_feat[:, :, 0::2]  # [B//2, C, self.part_num, 1]
-        inf_mamba_feat = mamba_feat[:, :, 1::2]
+        vis_mamba_feat = mamba_feat[:, :, 0::2] + mixed_feat[:, :, 0::2]  # [B//2, C, self.part_num, 1]
+        inf_mamba_feat = mamba_feat[:, :, 1::2] + mixed_feat[:, :, 1::2]
 
         # Weighted Fusion
         vis_weighted_feat_map = []  # [B//2, C, H, W]
