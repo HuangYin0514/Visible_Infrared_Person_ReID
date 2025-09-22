@@ -31,6 +31,12 @@ class Interaction(nn.Module):
         self.inf_part_pool = copy.deepcopy(self.vis_part_pool)
         self.inf_part_att = copy.deepcopy(self.vis_part_att)
 
+        # self.mamba = nn.Sequential(
+        #     nn.Conv2d(2048, 2048, kernel_size=1, stride=1, padding=0),
+        #     nn.BatchNorm2d(2048),
+        #     nn.ReLU(inplace=True),
+        # )
+
         self.mamba = MAMBA(in_cdim=2048, hidden_cdim=256)
 
         self.vis_add_inf = nn.Sequential(

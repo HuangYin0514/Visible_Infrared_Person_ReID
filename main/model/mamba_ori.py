@@ -13,50 +13,25 @@ class MAMBA(nn.Module):
 
         d_inner = hidden_cdim * 2
 
-        # LN
-        self.norm_1 = LayerNorm(in_cdim, "with_bias")
-
-        # SS2D
-        self.SS2D_in_proj = nn.Conv2d(in_cdim, d_inner, 1, 1)
-        self.SS2D_ssm = SSM(d_model=hidden_cdim)
-        self.SS2D_LN = LayerNorm(in_cdim, "with_bias")
-        self.SS2D_act = nn.SiLU()
-        self.SS2D_out_proj = nn.Conv2d(d_inner, in_cdim, 1, 1)
-
-        # LN
-        self.norm_2 = LayerNorm(in_cdim, "with_bias")
-
-        # FFN
-        self.ffn = nn.Sequential(
-            nn.Conv2d(in_cdim, in_cdim, 1, 1),
-            nn.BatchNorm2d(in_cdim),
-            nn.ReLU(),
-        )
+        self.norm = LayerNorm(in_cdim, "with_bias")
+        self.in_proj = nn.Conv2d(in_cdim, d_inner * 2, 1, 1)
+        self.ssm = SSM(d_model=hidden_cdim)
+        self.out_proj = nn.Conv2d(d_inner, in_cdim, 1, 1)
+        self.act = nn.SiLU()
 
     def forward(self, feat_map):
         B, C, H, W = feat_map.shape
-        skip_feat_map = feat_map
 
-        # LN
-        feat_map = self.norm_1(feat_map)  # [B, C, H, W]
-
-        # SS2D
-        x = self.SS2D_in_proj(feat_map)  #  [B, d_inner, H, W]
+        feat_map = self.norm(feat_map)
+        xz = self.in_proj(feat_map)
+        x, z = xz.chunk(2, dim=1)
         b, c, h, w = x.shape
-        ssm_forward_out = self.SS2D_ssm(x.flatten(2))  # [B, H*W, d_inner]
-        ssm_backward_out = self.SS2D_ssm(x.flatten(2).flip([-1]))
+        ssm_forward_out = self.ssm(x.flatten(2))  # [B, C, H, W] -> [B, C, H*W] -> [B, H*W, C]
+        ssm_backward_out = self.ssm(x.flatten(2).flip([-1]))
         ssm_out = ssm_forward_out + ssm_backward_out.flip([1])
         ssm_out = rearrange(ssm_out, "b (h w) c -> b c h w", h=h, w=w)
-        ssm_out = self.SS2D_act(ssm_out)  # [B, d_inner, H, W]
-        ssm_out = self.SS2D_out_proj(ssm_out)  # [B, C, H, W]
-        out = ssm_out + skip_feat_map
-
-        # LN
-        skip_ssm_out = ssm_out
-        out = self.norm_2(out)
-        # FFN
-        out = self.ffn(out) + skip_ssm_out
-
+        ssm_out = ssm_out * self.act(z)  # [B, C, H, W]
+        out = self.out_proj(ssm_out)
         return out
 
 
@@ -262,7 +237,7 @@ class SSM(nn.Module):
 
         dts, Bs, Cs = torch.split(x_dbl, [R, N, N], dim=-1)
         dts = dt_projs_weight @ dts.t()
-        dts = F.softplus(dts) * 0.001  # ADD for mine
+        dts = F.softplus(dts)  # ADD for mine
         dts = rearrange(dts, "d (b l) -> b l d", l=L)
         Bs = rearrange(Bs, "(b l) dstate -> b dstate l", l=L).contiguous()
         Cs = rearrange(Cs, "(b l) dstate -> b dstate l", l=L).contiguous()
