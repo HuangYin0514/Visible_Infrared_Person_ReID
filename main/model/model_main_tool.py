@@ -37,7 +37,7 @@ class Interaction(nn.Module):
         #     nn.ReLU(inplace=True),
         # )
 
-        self.mamba = MAMBA(in_cdim=2048, hidden_cdim=128)
+        self.mamba = MAMBA(in_cdim=2048, hidden_cdim=256)
 
         self.vis_add_inf = nn.Sequential(
             nn.Conv2d(2048, 2048, kernel_size=1, stride=1, padding=0),
@@ -67,8 +67,8 @@ class Interaction(nn.Module):
 
         # Mamba
         mamba_feat = self.mamba(mixed_feat)  # [B//2, C, self.part_num * 2, 1]
-        vis_mamba_feat = mamba_feat[:, :, 0::2] + mixed_feat[:, :, 0::2]  # [B//2, C, self.part_num, 1]
-        inf_mamba_feat = mamba_feat[:, :, 1::2] + mixed_feat[:, :, 1::2]
+        vis_mamba_feat = mamba_feat[:, :, 0::2]  # [B//2, C, self.part_num, 1]
+        inf_mamba_feat = mamba_feat[:, :, 1::2]
 
         # Weighted Fusion
         vis_weighted_feat_map = []  # [B//2, C, H, W]
@@ -82,8 +82,8 @@ class Interaction(nn.Module):
         inf_weighted_feat_map = torch.cat(inf_weighted_feat_map, dim=2)
 
         # Fusion
-        vis_feat_map = self.vis_add_inf(inf_weighted_feat_map) + vis_feat_map
-        inf_feat_map = self.inf_add_vis(vis_weighted_feat_map) + inf_feat_map
+        vis_feat_map = inf_weighted_feat_map + vis_feat_map
+        inf_feat_map = vis_weighted_feat_map + inf_feat_map
         feat_map = torch.cat([vis_feat_map, inf_feat_map], dim=0)
         return feat_map
 
