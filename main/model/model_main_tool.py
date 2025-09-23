@@ -18,7 +18,8 @@ class Interaction(nn.Module):
         self.vis_part_pool = nn.ModuleList()
         self.vis_part_att = nn.ModuleList()
         for i in range(self.part_num):
-            self.vis_part_pool.append(nn.AdaptiveMaxPool2d((1, 1)))
+            # self.vis_part_pool.append(nn.AdaptiveMaxPool2d((1, 1)))
+            self.vis_part_pool.append(nn.AdaptiveAvgPool2d((1, 1)))
             self.vis_part_att.append(
                 nn.Sequential(
                     nn.Conv2d(2048, 2048, kernel_size=1, stride=1, padding=0),
@@ -82,8 +83,8 @@ class Interaction(nn.Module):
         inf_weighted_feat_map = torch.cat(inf_weighted_feat_map, dim=2)
 
         # Fusion
-        vis_feat_map = inf_weighted_feat_map + vis_feat_map
-        inf_feat_map = vis_weighted_feat_map + inf_feat_map
+        vis_feat_map = self.vis_add_inf(inf_weighted_feat_map) + vis_feat_map
+        inf_feat_map = self.inf_add_vis(vis_weighted_feat_map) + inf_feat_map
         feat_map = torch.cat([vis_feat_map, inf_feat_map], dim=0)
         return feat_map
 
