@@ -20,6 +20,12 @@ class Interaction(nn.Module):
         # self.un_pooling = nn.Upsample(scale_factor=3, mode="bilinear", align_corners=True)
         # F.interpolate(f_i, size=size_in, mode="nearest")
 
+        self.local_rgb_conv = nn.Sequential(
+            nn.Conv2d(2048 * 2, 2048, kernel_size=1, stride=1, padding=0),
+            nn.Sigmoid(),
+        )
+        self.local_inf_conv = copy.deepcopy(self.local_rgb_conv)
+
         self.vis_add_inf = nn.Sequential(
             nn.Conv2d(2048, 2048, kernel_size=1, stride=1, padding=0),
             nn.BatchNorm2d(2048),
@@ -35,6 +41,10 @@ class Interaction(nn.Module):
         B, C, H, W = feat_map.shape
 
         vis_feat_map, inf_feat_map = torch.chunk(feat_map, 2, dim=0)
+
+        cat_vis_inf_feat_map = torch.cat([vis_feat_map, inf_feat_map], dim=1)
+        vis_local_feat_map = self.local_rgb_conv(cat_vis_inf_feat_map) * vis_feat_map
+        inf_local_feat_map = self.local_inf_conv(cat_vis_inf_feat_map) * inf_feat_map
 
         # Split Horizon Strategy & Patch mixed reordering
         vis_part_feat_map = self.pooling(vis_feat_map)  # [B, C, 6, 3]
@@ -58,8 +68,8 @@ class Interaction(nn.Module):
         inf_mamba_feat = F.interpolate(inf_mamba_feat, size=(H, W), mode="nearest")
 
         # Fusion
-        vis_feat_map = self.vis_add_inf(inf_mamba_feat) + vis_feat_map
-        inf_feat_map = self.inf_add_vis(vis_mamba_feat) + inf_feat_map
+        vis_feat_map = self.vis_add_inf(inf_mamba_feat + inf_local_feat_map) + vis_feat_map
+        inf_feat_map = self.inf_add_vis(vis_mamba_feat + vis_local_feat_map) + inf_feat_map
         feat_map = torch.cat([vis_feat_map, inf_feat_map], dim=0)
         return feat_map
 
