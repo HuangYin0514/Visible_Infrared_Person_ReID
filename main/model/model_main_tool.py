@@ -21,7 +21,7 @@ class Interaction(nn.Module):
         # F.interpolate(f_i, size=size_in, mode="nearest")
 
         self.local_rgb_conv = nn.Sequential(
-            nn.Conv2d(2048 * 2, 2048, kernel_size=1, stride=1, padding=0),
+            nn.Conv2d(2048 * 2, 2048, kernel_size=3, stride=1, padding=1),
             nn.Sigmoid(),
         )
         self.local_inf_conv = copy.deepcopy(self.local_rgb_conv)
