@@ -1,3 +1,4 @@
+import copy
 import math
 import numbers
 
@@ -7,57 +8,122 @@ import torch.nn.functional as F
 from einops import einsum, rearrange, repeat
 
 
-class MAMBA(nn.Module):
-    def __init__(self, in_cdim=2048, hidden_cdim=96):
-        super(MAMBA, self).__init__()
+class Featmap_2_Patch(nn.Module):
+    def __init__(self):
+        super(Featmap_2_Patch, self).__init__()
+        self.pooling = nn.AdaptiveAvgPool2d((6, 3))
 
-        d_inner = hidden_cdim * 2
+    def forward(self, feat_map):
+        B, C, H, W = feat_map.shape
+        feat_patch = rearrange(feat_map, "b c h w -> b c (h w)")
+        return feat_patch
+
+
+class Patch_2_Featmap(nn.Module):
+    def __init__(self):
+        super(Patch_2_Featmap, self).__init__()
+
+    def forward(self, feat_patch):
+        B, C, L = feat_patch.shape
+        feat_map = rearrange(feat_patch.squeeze(), "b c (h w)-> b c h w", h=6, w=3)
+        feat_map = F.interpolate(feat_map, size=(18, 9), mode="nearest")
+        return feat_map
+
+
+def shuffle_patch(vis_feat_patch, inf_feat_patch):
+    B, C, L = vis_feat_patch.size()
+    mixed_feat_patch = []
+    for i in range(6 * 3):
+        mixed_feat_patch.append(vis_feat_patch[:, :, i])
+        mixed_feat_patch.append(inf_feat_patch[:, :, i])
+    mixed_feat_patch = torch.stack(mixed_feat_patch, dim=2)
+    return mixed_feat_patch
+
+
+def unshuffle_patch(mixed_feat_patch):
+    B, C, L = mixed_feat_patch.size()
+    vis_feat_patch = mixed_feat_patch[:, :, 0::2]
+    inf_feat_patch = mixed_feat_patch[:, :, 1::2]
+    return vis_feat_patch, inf_feat_patch
+
+
+class CS_MAMBA(nn.Module):
+    def __init__(self, in_cdim=2048, hidden_cdim=96):
+        super(CS_MAMBA, self).__init__()
 
         # LN
         self.norm_1 = LayerNorm(in_cdim, "with_bias")
-
-        # SS2D
-        self.SS2D_in_proj = nn.Conv2d(in_cdim, d_inner, 1, 1)
-        self.SS2D_ssm = SSM(d_model=hidden_cdim)
-        self.SS2D_LN = LayerNorm(in_cdim, "with_bias")
-        self.SS2D_act = nn.SiLU()
-        self.SS2D_out_proj = nn.Conv2d(d_inner, in_cdim, 1, 1)
+        # Mamba
+        self.vis_featmap_2_patch = Featmap_2_Patch()
+        self.inf_featmap_2_patch = Featmap_2_Patch()
+        self.SS2D = SS2D(in_cdim, hidden_cdim)
+        self.vis_patch_2_featmap = Patch_2_Featmap()
+        self.inf_patch_2_featmap = Patch_2_Featmap()
 
         # LN
         self.norm_2 = LayerNorm(in_cdim, "with_bias")
-
         # FFN
-        self.ffn = nn.Sequential(
+        self.ffn_vis = nn.Sequential(
             nn.Conv2d(in_cdim, in_cdim, 1, 1),
             nn.BatchNorm2d(in_cdim),
             nn.ReLU(),
         )
+        self.ffn_inf = copy.deepcopy(self.ffn_vis)
+
+    def forward(self, vis_feat_map, inf_feat_map):
+        B, C, H, W = vis_feat_map.shape
+
+        # ---- Mamba ----
+        # patch feat map
+        vis_feat_patch = self.vis_featmap_2_patch(vis_feat_map)  # [B, C, n_patch]
+        inf_feat_patch = self.inf_featmap_2_patch(inf_feat_map)  # [B, C, n_patch]
+        # shuffle
+        shuffle_feat_map = shuffle_patch(vis_feat_patch, inf_feat_patch).unsqueeze(3)  # [B, C, 2*n_patch, 1]
+
+        ssm_out = self.SS2D(self.norm_1(shuffle_feat_map)) + shuffle_feat_map  # SS2D # [B, C, 2*n_patch, 1]
+
+        # unshuffle
+        vis_feat_patch, inf_feat_patch = unshuffle_patch(ssm_out.squeeze())  # [B, C, n_patch] / [B, C, n_patch]
+        # unpatch feat map
+        vis_feat_map = self.vis_patch_2_featmap(vis_feat_patch)  # [B, C, H, W]
+        inf_feat_map = self.inf_patch_2_featmap(inf_feat_patch)  # [B, C, H, W]
+
+        # ---- FFN ----
+        out_vis = self.ffn_vis(self.norm_2(vis_feat_map)) + vis_feat_map
+        out_inf = self.ffn_inf(self.norm_2(inf_feat_map)) + inf_feat_map
+        return out_vis, out_inf
+
+
+class SS2D(nn.Module):
+    """
+    输入维度为：[B, C, n_patch, 1]
+    输出维度为：[B, C, n_patch, 1]
+    """
+
+    def __init__(self, in_cdim=2048, hidden_cdim=96):
+        super(SS2D, self).__init__()
+
+        d_inner = hidden_cdim * 2
+
+        self.in_proj = nn.Conv2d(in_cdim, d_inner, 1, 1)
+        self.ssm = SSM(d_model=hidden_cdim)
+        self.LN = LayerNorm(in_cdim, "with_bias")
+        self.act = nn.SiLU()
+        self.out_proj = nn.Conv2d(d_inner, in_cdim, 1, 1)
 
     def forward(self, feat_map):
         B, C, H, W = feat_map.shape
-        skip_feat_map = feat_map
-
-        # LN
-        feat_map = self.norm_1(feat_map)  # [B, C, H, W]
 
         # SS2D
-        x = self.SS2D_in_proj(feat_map)  #  [B, d_inner, H, W]
+        x = self.in_proj(feat_map)  #  [B, d_inner, H, W]
         b, c, h, w = x.shape
-        ssm_forward_out = self.SS2D_ssm(x.flatten(2))  # [B, H*W, d_inner]
-        ssm_backward_out = self.SS2D_ssm(x.flatten(2).flip([-1]))
+        ssm_forward_out = self.ssm(x.flatten(2))  # [B, H*W, d_inner]
+        ssm_backward_out = self.ssm(x.flatten(2).flip([-1]))
         ssm_out = ssm_forward_out + ssm_backward_out.flip([1])
         ssm_out = rearrange(ssm_out, "b (h w) c -> b c h w", h=h, w=w)
-        ssm_out = self.SS2D_act(ssm_out)  # [B, d_inner, H, W]
-        ssm_out = self.SS2D_out_proj(ssm_out)  # [B, C, H, W]
-        out = ssm_out + skip_feat_map
-
-        # LN
-        skip_ssm_out = ssm_out
-        out = self.norm_2(out)
-        # FFN
-        out = self.ffn(out) + skip_ssm_out
-
-        return out
+        ssm_out = self.act(ssm_out)  # [B, d_inner, H, W]
+        ssm_out = self.out_proj(ssm_out)  # [B, C, H, W]
+        return ssm_out
 
 
 #############################################################
