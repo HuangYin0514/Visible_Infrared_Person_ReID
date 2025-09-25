@@ -89,8 +89,8 @@ class CS_MAMBA(nn.Module):
         inf_feat_map = self.inf_patch_2_featmap(inf_feat_patch)  # [B, C, H, W]
 
         # ---- FFN ----
-        out_vis = self.ffn_vis(self.norm_2(vis_feat_map))
-        out_inf = self.ffn_inf(self.norm_2(inf_feat_map))
+        out_vis = self.ffn_vis(vis_feat_map)
+        out_inf = self.ffn_inf(inf_feat_map)
         return out_vis, out_inf
 
 
