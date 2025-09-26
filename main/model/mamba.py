@@ -97,8 +97,8 @@ class CS_MAMBA(nn.Module):
         inf_feat_map = self.inf_patch_2_featmap(inf_feat_patch)
 
         # ---- Local ----
-        vis_local = self.local_vis(vis_feat_map) * vis_feat_map + vis_feat_map  # [B, C, H, W]
-        inf_local = self.local_inf(inf_feat_map) * inf_feat_map + inf_feat_map
+        vis_local = self.local_vis(vis_feat_map) * vis_feat_map  # [B, C, H, W]
+        inf_local = self.local_inf(inf_feat_map) * inf_feat_map
 
         # ---- FFN ----
         out_vis = self.ffn_vis(vis_feat_map + vis_local)
