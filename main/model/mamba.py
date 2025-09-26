@@ -67,7 +67,7 @@ class CS_MAMBA(nn.Module):
         )
         self.local_inf = copy.deepcopy(self.local_vis)
         self.local_vis_parameter = nn.Parameter(torch.tensor(0.5))  # 随机初始化 1 个标量
-        self.local_inf_parameter = nn.Parameter(torch.tensor(0.5))  # 随机初始化 1 个标量
+        self.local_inf_parameter = nn.Parameter(torch.tensor(0.5))
 
         # LN
         self.norm_2 = LayerNorm(in_cdim, "with_bias")
