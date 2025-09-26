@@ -21,11 +21,11 @@ class Interaction(nn.Module):
 
         vis_feat_map, inf_feat_map = torch.chunk(feat_map, 2, dim=0)
 
-        vis_mamba_feat_map, inf_mamba_feat_map = self.cs_mamba(vis_feat_map, inf_feat_map)
+        vis_information, inf_information = self.cs_mamba(vis_feat_map, inf_feat_map)
 
         # Fusion
-        vis_feat_map = inf_mamba_feat_map + vis_feat_map
-        inf_feat_map = vis_mamba_feat_map + inf_feat_map
+        vis_feat_map = inf_information + vis_feat_map
+        inf_feat_map = vis_information + inf_feat_map
         feat_map = torch.cat([vis_feat_map, inf_feat_map], dim=0)
         return feat_map
 

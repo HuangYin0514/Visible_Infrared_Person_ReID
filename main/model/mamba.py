@@ -60,11 +60,18 @@ class CS_MAMBA(nn.Module):
         self.vis_patch_2_featmap = Patch_2_Featmap()
         self.inf_patch_2_featmap = Patch_2_Featmap()
 
+        self.local_vis = nn.Sequential(
+            nn.Conv2d(in_cdim, in_cdim, 1, 1, 0),
+            nn.BatchNorm2d(in_cdim),
+            nn.ReLU(),
+        )
+        self.local_inf = copy.deepcopy(self.local_vis)
+
         # LN
         self.norm_2 = LayerNorm(in_cdim, "with_bias")
         # FFN
         self.ffn_vis = nn.Sequential(
-            nn.Conv2d(in_cdim, in_cdim, 1, 1),
+            nn.Conv2d(in_cdim, in_cdim, 1, 1, 0),
             nn.BatchNorm2d(in_cdim),
             nn.ReLU(),
         )
@@ -86,11 +93,15 @@ class CS_MAMBA(nn.Module):
         vis_feat_patch, inf_feat_patch = unshuffle_patch(ssm_out.squeeze())  # [B, C, n_patch] / [B, C, n_patch]
         # unpatch feat map
         vis_feat_map = self.vis_patch_2_featmap(vis_feat_patch)  # [B, C, H, W]
-        inf_feat_map = self.inf_patch_2_featmap(inf_feat_patch)  # [B, C, H, W]
+        inf_feat_map = self.inf_patch_2_featmap(inf_feat_patch)
+
+        # ---- Local ----
+        local_vis_feat_map = self.local_vis(vis_feat_map)  # [B, C, H, W]
+        local_inf_feat_map = self.local_inf(inf_feat_map)
 
         # ---- FFN ----
-        out_vis = self.ffn_vis(vis_feat_map)
-        out_inf = self.ffn_inf(inf_feat_map)
+        out_vis = self.ffn_vis(vis_feat_map + local_vis_feat_map)
+        out_inf = self.ffn_inf(inf_feat_map + local_inf_feat_map)
         return out_vis, out_inf
 
 
@@ -105,11 +116,11 @@ class SS2D(nn.Module):
 
         d_inner = hidden_cdim * 2
 
-        self.in_proj = nn.Conv2d(in_cdim, d_inner, 1, 1)
+        self.in_proj = nn.Conv2d(in_cdim, d_inner, 1, 1, 0)
         self.ssm = SSM(d_model=hidden_cdim)
         self.LN = LayerNorm(in_cdim, "with_bias")
         self.act = nn.SiLU()
-        self.out_proj = nn.Conv2d(d_inner, in_cdim, 1, 1)
+        self.out_proj = nn.Conv2d(d_inner, in_cdim, 1, 1, 0)
 
     def forward(self, feat_map):
         B, C, H, W = feat_map.shape
