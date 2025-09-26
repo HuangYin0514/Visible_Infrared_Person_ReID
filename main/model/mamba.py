@@ -66,6 +66,8 @@ class CS_MAMBA(nn.Module):
             nn.ReLU(),
         )
         self.local_inf = copy.deepcopy(self.local_vis)
+        self.local_vis_parameter = nn.Parameter(torch.tensor(0.5))  # 随机初始化 1 个标量
+        self.local_inf_parameter = nn.Parameter(torch.tensor(0.5))  # 随机初始化 1 个标量
 
         # LN
         self.norm_2 = LayerNorm(in_cdim, "with_bias")
@@ -100,8 +102,8 @@ class CS_MAMBA(nn.Module):
         local_inf_feat_map = self.local_inf(inf_feat_map)
 
         # ---- FFN ----
-        out_vis = self.ffn_vis(vis_feat_map + local_vis_feat_map)
-        out_inf = self.ffn_inf(inf_feat_map + local_inf_feat_map)
+        out_vis = self.ffn_vis(self.local_vis_parameter * vis_feat_map + (1 - self.local_vis_parameter) * local_vis_feat_map)
+        out_inf = self.ffn_inf(self.local_inf_parameter * inf_feat_map + (1 - self.local_inf_parameter) * local_inf_feat_map)
         return out_vis, out_inf
 
 
