@@ -7,11 +7,16 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import einsum, rearrange, repeat
 
+from .channel_attention import ChannelAttention
+
+POOL_HEGHT = 6
+POOL_WIDTH = 1
+
 
 class Featmap_2_Patch(nn.Module):
     def __init__(self):
         super(Featmap_2_Patch, self).__init__()
-        self.pooling = nn.AdaptiveAvgPool2d((6, 3))
+        self.pooling = nn.AdaptiveAvgPool2d((POOL_HEGHT, POOL_WIDTH))
 
     def forward(self, feat_map):
         B, C, H, W = feat_map.shape
@@ -25,7 +30,7 @@ class Patch_2_Featmap(nn.Module):
 
     def forward(self, feat_patch):
         B, C, L = feat_patch.shape
-        feat_map = rearrange(feat_patch.squeeze(), "b c (h w)-> b c h w", h=6, w=3)
+        feat_map = rearrange(feat_patch.squeeze(), "b c (h w)-> b c h w", h=POOL_HEGHT, w=POOL_WIDTH)
         feat_map = F.interpolate(feat_map, size=(18, 9), mode="nearest")
         return feat_map
 
@@ -33,7 +38,7 @@ class Patch_2_Featmap(nn.Module):
 def shuffle_patch(vis_feat_patch, inf_feat_patch):
     B, C, L = vis_feat_patch.size()
     mixed_feat_patch = []
-    for i in range(6 * 3):
+    for i in range(POOL_HEGHT * POOL_WIDTH):
         mixed_feat_patch.append(vis_feat_patch[:, :, i])
         mixed_feat_patch.append(inf_feat_patch[:, :, i])
     mixed_feat_patch = torch.stack(mixed_feat_patch, dim=2)
@@ -60,14 +65,8 @@ class CS_MAMBA(nn.Module):
         self.vis_patch_2_featmap = Patch_2_Featmap()
         self.inf_patch_2_featmap = Patch_2_Featmap()
 
-        self.local_vis = nn.Sequential(
-            nn.Conv2d(in_cdim, in_cdim, 1, 1, 0),
-            nn.BatchNorm2d(in_cdim),
-            nn.ReLU(),
-        )
+        self.local_vis = ChannelAttention(in_cdim)
         self.local_inf = copy.deepcopy(self.local_vis)
-        self.local_vis_parameter = nn.Parameter(torch.tensor(0.5))  # 随机初始化 1 个标量
-        self.local_inf_parameter = nn.Parameter(torch.tensor(0.5))
 
         # LN
         self.norm_2 = LayerNorm(in_cdim, "with_bias")
@@ -98,12 +97,12 @@ class CS_MAMBA(nn.Module):
         inf_feat_map = self.inf_patch_2_featmap(inf_feat_patch)
 
         # ---- Local ----
-        local_vis_feat_map = self.local_vis(vis_feat_map)  # [B, C, H, W]
-        local_inf_feat_map = self.local_inf(inf_feat_map)
+        vis_local = self.local_vis(vis_feat_map) * vis_feat_map + vis_feat_map  # [B, C, H, W]
+        inf_local = self.local_inf(inf_feat_map) * inf_feat_map + inf_feat_map
 
         # ---- FFN ----
-        out_vis = self.ffn_vis(self.local_vis_parameter * vis_feat_map + (1 - self.local_vis_parameter) * local_vis_feat_map)
-        out_inf = self.ffn_inf(self.local_inf_parameter * inf_feat_map + (1 - self.local_inf_parameter) * local_inf_feat_map)
+        out_vis = self.ffn_vis(vis_feat_map + vis_local)
+        out_inf = self.ffn_inf(inf_feat_map + inf_local)
         return out_vis, out_inf
 
 
