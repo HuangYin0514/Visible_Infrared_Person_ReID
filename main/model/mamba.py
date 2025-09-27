@@ -10,7 +10,7 @@ from einops import einsum, rearrange, repeat
 from .channel_attention import ChannelAttention
 
 POOL_HEGHT = 6
-POOL_WIDTH = 3
+POOL_WIDTH = 1
 
 
 class Featmap_2_Patch(nn.Module):
