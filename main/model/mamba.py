@@ -10,7 +10,7 @@ from einops import einsum, rearrange, repeat
 from .channel_attention import ChannelAttention
 
 POOL_HEGHT = 6
-POOL_WIDTH = 1
+POOL_WIDTH = 3
 
 
 class Featmap_2_Patch(nn.Module):
@@ -88,13 +88,13 @@ class CS_MAMBA(nn.Module):
         # shuffle
         shuffle_feat_map = shuffle_patch(vis_feat_patch, inf_feat_patch).unsqueeze(3)  # [B, C, 2*n_patch, 1]
 
-        ssm_out = self.SS2D(self.norm_1(shuffle_feat_map))  # SS2D # [B, C, 2*n_patch, 1]
+        ssm_out = self.SS2D(self.norm_1(shuffle_feat_map)) + shuffle_feat_map  # SS2D # [B, C, 2*n_patch, 1]
 
         # unshuffle
         vis_feat_patch, inf_feat_patch = unshuffle_patch(ssm_out.squeeze())  # [B, C, n_patch] / [B, C, n_patch]
         # unpatch feat map
-        vis_feat_map = self.vis_patch_2_featmap(vis_feat_patch) + vis_feat_map  # [B, C, H, W]
-        inf_feat_map = self.inf_patch_2_featmap(inf_feat_patch) + inf_feat_map  # [B, C, H, W]
+        vis_feat_map = self.vis_patch_2_featmap(vis_feat_patch)  # [B, C, H, W]
+        inf_feat_map = self.inf_patch_2_featmap(inf_feat_patch)
 
         # ---- Local ----
         vis_local = self.local_vis(vis_feat_map) * vis_feat_map + vis_feat_map  # [B, C, H, W]
