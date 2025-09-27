@@ -101,8 +101,8 @@ class CS_MAMBA(nn.Module):
         inf_local = self.local_inf(inf_feat_map) * inf_feat_map + inf_feat_map
 
         # ---- FFN ----
-        out_vis = self.ffn_vis(vis_feat_map + vis_local)
-        out_inf = self.ffn_inf(inf_feat_map + inf_local)
+        out_vis = self.ffn_vis(0.5 * vis_feat_map + 0.5 * vis_local)
+        out_inf = self.ffn_inf(0.5 * inf_feat_map + 0.5 * inf_local)
         return out_vis, out_inf
 
 
