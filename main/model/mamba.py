@@ -150,7 +150,7 @@ class SSM(nn.Module):
         (delta, B_parameter, C_parameter) = delta_B_C.split(
             split_size=[self.dt_rank, self.d_state, self.d_state], dim=-1
         )  # delta: (B, L, dt_rank). B, C: (B, L, d_state)
-        delta_parameter = F.softplus(self.dt_proj(delta))  # (B, L, D)
+        delta_parameter = F.softplus(self.dt_proj(delta)) * 0.001  # (B, L, D)
 
         y = self.selective_scan(x, delta_parameter, A_parameter, B_parameter, C_parameter, D_parameter)  # [B, L, D]
 
