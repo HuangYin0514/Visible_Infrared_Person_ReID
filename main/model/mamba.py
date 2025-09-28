@@ -7,8 +7,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import einsum, rearrange, repeat
 
-from .channel_attention import ChannelAttention
-
 POOL_HEGHT = 6
 POOL_WIDTH = 1
 
@@ -20,8 +18,7 @@ class Featmap_2_Patch(nn.Module):
 
     def forward(self, feat_map):
         B, C, H, W = feat_map.shape
-        feat_map = self.pooling(feat_map)
-        feat_patch = rearrange(feat_map, "b c h w -> b c (h w)")
+        feat_patch = rearrange(self.pooling(feat_map), "b c h w -> b c (h w)")
         return feat_patch
 
 
@@ -36,41 +33,22 @@ class Patch_2_Featmap(nn.Module):
         return feat_map
 
 
-def shuffle_patch(vis_feat_patch, inf_feat_patch):
-    B, C, L = vis_feat_patch.size()
-    mixed_feat_patch = []
-    for i in range(POOL_HEGHT * POOL_WIDTH):
-        mixed_feat_patch.append(vis_feat_patch[:, :, i])
-        mixed_feat_patch.append(inf_feat_patch[:, :, i])
-    mixed_feat_patch = torch.stack(mixed_feat_patch, dim=2)
-    return mixed_feat_patch
-
-
-def unshuffle_patch(mixed_feat_patch):
-    B, C, L = mixed_feat_patch.size()
-    vis_feat_patch = mixed_feat_patch[:, :, 0::2]
-    inf_feat_patch = mixed_feat_patch[:, :, 1::2]
-    return vis_feat_patch, inf_feat_patch
-
-
 class CS_MAMBA(nn.Module):
-    def __init__(self, in_cdim=2048, hidden_cdim=96):
+    def __init__(self, in_cdim=2048, d_model=96):
         super(CS_MAMBA, self).__init__()
 
-        # LN
-        self.norm_1 = LayerNorm(in_cdim, "with_bias")
         # Mamba
-        self.vis_featmap_2_patch = Featmap_2_Patch()
-        self.inf_featmap_2_patch = Featmap_2_Patch()
-        self.SS2D = SS2D(in_cdim, hidden_cdim)
-        self.vis_patch_2_featmap = Patch_2_Featmap()
-        self.inf_patch_2_featmap = Patch_2_Featmap()
+        self.norm_1 = nn.LayerNorm(in_cdim * 2)
+        self.vi_featmap_2_patch = Featmap_2_Patch()
+        self.mamba = Mamba(in_cdim=in_cdim * 2, d_model=d_model)
+        self.vi_patch_2_featmap = Patch_2_Featmap()
+        self.norm_2 = nn.LayerNorm(in_cdim * 2)
 
-        self.local_vis = ChannelAttention(in_cdim)
-        self.local_inf = copy.deepcopy(self.local_vis)
+        self.attention = nn.Sequential(
+            nn.Linear(POOL_HEGHT * POOL_WIDTH, 1, bias=False),
+            nn.Sigmoid(),
+        )
 
-        # LN
-        self.norm_2 = LayerNorm(in_cdim, "with_bias")
         # FFN
         self.ffn_vis = nn.Sequential(
             nn.Conv2d(in_cdim, in_cdim, 1, 1, 0),
@@ -82,311 +60,131 @@ class CS_MAMBA(nn.Module):
     def forward(self, vis_feat_map, inf_feat_map):
         B, C, H, W = vis_feat_map.shape
 
+        vi_feat_map = torch.cat((vis_feat_map, inf_feat_map), dim=1)  # [B, 2C, H, W]
+
         # ---- Mamba ----
-        # Patch feat map
-        vis_feat_patch = self.vis_featmap_2_patch(vis_feat_map).unsqueeze(3)  # [B, C, n_patch, 1]
-        inf_feat_patch = self.inf_featmap_2_patch(inf_feat_map).unsqueeze(3)  # [B, C, n_patch, 1]
+        vi_feat_patch = self.vi_featmap_2_patch(vi_feat_map)  # [B, 2C, n_patch]
+        vi_feat_patch = rearrange(vi_feat_patch, "B D L -> B L D")  # [B, n_patch, 2C]
+        vi_feat_patch = self.mamba(self.norm_1(vi_feat_patch)) + vi_feat_patch  # [B, n_patch, 2C]
+        vi_feat_patch = self.norm_2(vi_feat_patch)
+        vi_feat_patch = rearrange(vi_feat_patch, "B L D -> B D L")  # [B, 2C, n_patch]
 
-        # SS2D
-        vis_ssm_out = self.SS2D(self.norm_1(vis_feat_patch)) + vis_feat_patch  # SS2D # [B, C, n_patch, 1]
-        inf_ssm_out = self.SS2D(self.norm_1(inf_feat_patch)) + inf_feat_patch
-
-        # Patch feat map
-        vis_ssm_out = self.vis_patch_2_featmap(vis_ssm_out.squeeze(3))  # [B, C, H, W]
-        inf_ssm_out = self.inf_patch_2_featmap(inf_ssm_out.squeeze(3))
-
-        # ---- Local Attention ----
-        vis_feat_attention = self.local_vis(vis_feat_map)
-        inf_feat_attention = self.local_inf(inf_feat_map)
-        vis_feat_map = vis_feat_map * inf_feat_attention
-        inf_feat_map = inf_feat_map * vis_feat_attention
+        # --- Attention ---
+        vi_attention = self.attention(vi_feat_patch)  # [B, 2C, 1]
+        vis_attention, inf_attention = vi_attention.split(split_size=[C, C], dim=1)
 
         # ---- FFN ----
-        out_vis = self.ffn_vis(vis_feat_map)  # [B, C, H, W]
-        out_inf = self.ffn_inf(inf_feat_map)
-
+        out_vis = self.ffn_vis(vis_attention.unsqueeze(3) * vis_feat_map)
+        out_inf = self.ffn_inf(inf_attention.unsqueeze(3) * inf_feat_map)
         return out_vis, out_inf
 
 
-class SS2D(nn.Module):
-    """
-    输入维度为：[B, C, n_patch, 1]
-    输出维度为：[B, C, n_patch, 1]
-    """
+class Mamba(nn.Module):
+    def __init__(self, in_cdim=2048, d_model=96):
+        super(Mamba, self).__init__()
 
-    def __init__(self, in_cdim=2048, hidden_cdim=96):
-        super(SS2D, self).__init__()
+        ssm_ratio = 1.0
+        d_inner = int(ssm_ratio * d_model)
+        kernel_size = 3
 
-        d_inner = hidden_cdim * 2
-
-        self.in_proj = nn.Conv2d(in_cdim, d_inner, 1, 1, 0)
-        self.ssm = SSM(d_model=hidden_cdim)
-        self.LN = LayerNorm(in_cdim, "with_bias")
-        self.act = nn.SiLU()
-        self.out_proj = nn.Conv2d(d_inner, in_cdim, 1, 1, 0)
-
-    def forward(self, feat_map):
-        B, C, H, W = feat_map.shape
-
-        # SS2D
-        x = self.in_proj(feat_map)  #  [B, d_inner, H, W]
-        b, c, h, w = x.shape
-        ssm_forward_out = self.ssm(x.flatten(2))  # [B, H*W, d_inner]
-        ssm_backward_out = self.ssm(x.flatten(2).flip([-1]))
-        ssm_out = ssm_forward_out + ssm_backward_out.flip([1])
-        ssm_out = rearrange(ssm_out, "b (h w) c -> b c h w", h=h, w=w)
-        ssm_out = self.act(ssm_out)  # [B, d_inner, H, W]
-        ssm_out = self.out_proj(ssm_out)  # [B, C, H, W]
-        return ssm_out
-
-
-#############################################################
-class LayerNorm(nn.Module):
-    def __init__(self, dim, LayerNorm_type):
-        super(LayerNorm, self).__init__()
-        if LayerNorm_type == "BiasFree":
-            self.body = BiasFree_LayerNorm(dim)
-        else:
-            self.body = WithBias_LayerNorm(dim)
+        self.in_proj = nn.Linear(in_cdim, d_inner, bias=False)
+        self.conv1d = nn.Conv1d(
+            in_channels=d_inner,
+            out_channels=d_inner,
+            bias=True,
+            kernel_size=kernel_size,
+            groups=d_inner,
+            padding=(kernel_size - 1) // 2,
+        )
+        self.ssm = SSM(d_model=d_inner)
+        self.out_proj = nn.Linear(d_inner, in_cdim, bias=False)
 
     def forward(self, x):
-        h, w = x.shape[-2:]
-        return to_4d(self.body(to_3d(x)), h, w)
+        B, L, D = x.shape
+        x = self.in_proj(x)  # [B, L, D]
+        x = rearrange(x, "B L D -> B D L")
+        x = self.conv1d(x)
+        x = rearrange(x, "B D L -> B L D")
+        x = F.silu(x)  # [B, L, D]
+        y = self.ssm(x)  # [B, L, D]
+        out = self.out_proj(y)  # [B, L, in_cdim]
+        return out
 
 
-class BiasFree_LayerNorm(nn.Module):
-    def __init__(self, normalized_shape):
-        super(BiasFree_LayerNorm, self).__init__()
-        if isinstance(normalized_shape, numbers.Integral):
-            normalized_shape = (normalized_shape,)
-        normalized_shape = torch.Size(normalized_shape)
-
-        assert len(normalized_shape) == 1
-
-        self.weight = nn.Parameter(torch.ones(normalized_shape))
-        self.normalized_shape = normalized_shape
-
-    def forward(self, x):
-        sigma = x.var(-1, keepdim=True, unbiased=False)
-        return x / torch.sqrt(sigma + 1e-5) * self.weight
-
-
-class WithBias_LayerNorm(nn.Module):
-    def __init__(self, normalized_shape):
-        super(WithBias_LayerNorm, self).__init__()
-        if isinstance(normalized_shape, numbers.Integral):
-            normalized_shape = (normalized_shape,)
-        normalized_shape = torch.Size(normalized_shape)
-
-        assert len(normalized_shape) == 1
-
-        self.weight = nn.Parameter(torch.ones(normalized_shape))
-        self.bias = nn.Parameter(torch.zeros(normalized_shape))
-        self.normalized_shape = normalized_shape
-
-    def forward(self, x):
-        mu = x.mean(-1, keepdim=True)
-        sigma = x.var(-1, keepdim=True, unbiased=False)
-        return (x - mu) / torch.sqrt(sigma + 1e-5) * self.weight + self.bias
-
-
-def to_4d(x, h, w):
-    return rearrange(x, "b (h w) c -> b c h w", h=h, w=w)
-
-
-def to_3d(x):
-    return rearrange(x, "b c h w -> b (h w) c")
-
-
-#############################################################
-def drop_path(x, drop_prob: float = 0.0, training: bool = False):
-    if drop_prob == 0.0 or not training:
-        return x
-    keep_prob = 1 - drop_prob
-    shape = (x.shape[0],) + (1,) * (x.ndim - 1)  # work with diff dim tensors, not just 2D ConvNets
-    random_tensor = keep_prob + torch.rand(shape, dtype=x.dtype, device=x.device)
-    random_tensor.floor_()  # binarize
-    output = x.div(keep_prob) * random_tensor
-    return output
-
-
-class DropPath(nn.Module):
-    """https://github.com/hu-xh/CPNet/blob/main/models/CPNet.py#L231
-    DropPath (Stochastic Depth) 实现：
-    - 类似 Dropout，但不是随机丢弃单个神经元，而是随机丢弃整个残差分支。
-    - 训练时：每个样本的残差分支要么全部保留，要么整体置零。
-    - 推理时：不做丢弃，保持完整。
-
-    self.drop_path = DropPath(drop_rate) if drop_rate > 0. else nn.Identity()
-    """
-
-    def __init__(self, drop_prob=None):
-        super(DropPath, self).__init__()
-        self.drop_prob = drop_prob
-
-    def forward(self, x):
-        return drop_path(x, self.drop_prob, self.training)
-
-
-#############################################################
 class SSM(nn.Module):
+
     def __init__(
         self,
         d_model=96,
         d_state=16,
-        d_conv=4,
-        bias=False,
-        device=None,
-        dtype=None,
-        ssm_ratio=2.0,
-        dt_rank="auto",
-        dropout=0.0,
-        dt_min=0.001,
-        dt_max=0.1,
-        dt_init="random",
-        dt_scale=1.0,
-        conv_bias=True,
-        dt_init_floor=1e-4,
     ):
-        super().__init__()
-        factory_kwargs = {"device": device, "dtype": dtype}
-        d_inner = int(ssm_ratio * d_model)
-        dt_rank = math.ceil(d_model / 16) if dt_rank == "auto" else dt_rank
-        # in proj =======================================
+        super(SSM, self).__init__()
 
-        self.conv1d = nn.Conv1d(
-            in_channels=d_inner,
-            out_channels=d_inner,
-            bias=conv_bias,
-            kernel_size=d_conv,
-            groups=d_inner,
-            padding=d_conv - 1,
-            **factory_kwargs,
-        )
-        # x proj ============================
-        self.x_proj = nn.Linear(d_inner, (dt_rank + d_state * 2), bias=False, **factory_kwargs)
+        ssm_ratio = 1.0
+        self.d_inner = int(ssm_ratio * d_model)
+        self.d_state = d_state
+        self.dt_rank = math.ceil(d_model / 16)
 
-        # dt proj ============================
-        self.dt_projs = self.dt_init(dt_rank, d_inner, dt_scale, dt_init, dt_min, dt_max, dt_init_floor, **factory_kwargs)
+        # A
+        A = repeat(torch.arange(1, self.d_state + 1), "d_state -> d_inner d_state", d_inner=self.d_inner)  # Shape (d_inner, state_dim); Ex. [[1, 2, ... , 16], ... ]
+        self.A_log = nn.Parameter(torch.log(A))
 
-        # A, D =======================================
-        self.A_logs = self.A_log_init(d_state, d_inner, merge=True)  # (K * D, N)
-        self.Ds = self.D_init(d_inner, merge=True)  # (K * D)
+        # x is projected to delta_ori, B, C
+        self.x_proj = nn.Linear(self.d_inner, self.dt_rank + self.d_state * 2, bias=False)
 
-    @staticmethod
-    def dt_init(dt_rank, d_inner, dt_scale=1.0, dt_init="random", dt_min=0.001, dt_max=0.1, dt_init_floor=1e-4, **factory_kwargs):
-        dt_proj = nn.Linear(dt_rank, d_inner, bias=True)
+        # delta_ori is projected to delta
+        self.dt_proj = nn.Linear(self.dt_rank, self.d_inner, bias=True)
 
-        # Initialize special dt projection to preserve variance at initialization
-        dt_init_std = dt_rank**-0.5 * dt_scale
-        if dt_init == "constant":
-            nn.init.constant_(dt_proj.weight, dt_init_std)
-        elif dt_init == "random":
-            nn.init.uniform_(dt_proj.weight, -dt_init_std, dt_init_std)
-        else:
-            raise NotImplementedError
+        # D
+        self.D = nn.Parameter(torch.ones(self.d_inner))  # Ex. [[1, 1, ... , 1], ... ]
 
-        # # Initialize dt bias so that F.softplus(dt_bias) is between dt_min and dt_max
-        # dt = torch.exp(torch.rand(d_inner, **factory_kwargs) * (math.log(dt_max) - math.log(dt_min)) + math.log(dt_min)).clamp(min=dt_init_floor)
-        # # Inverse of softplus: https://github.com/pytorch/pytorch/issues/72759
-        # inv_dt = dt + torch.log(-torch.expm1(-dt))
-        # with torch.no_grad():
-        #     dt_proj.bias.copy_(inv_dt)
-        # Our initialization would set all Linear.bias to zero, need to mark this one as _no_reinit
-        # dt_proj.bias._no_reinit = True
+    def forward(self, x):
+        B, L, D = x.shape
 
-        return dt_proj
+        # Step 0: Get A and D
+        A_parameter = -torch.exp(self.A_log.float())  # Shape (D, d_state); Ex. [-[1, 2, ... , 16], ... ]
+        D_parameter = self.D.float()
 
-    @staticmethod
-    def A_log_init(d_state, d_inner, copies=-1, device=None, merge=True):
-        # S4D real initialization
-        A = repeat(
-            torch.arange(1, d_state + 1, dtype=torch.float32, device=device),
-            "n -> d n",
-            d=d_inner,
-        ).contiguous()
-        A_log = torch.log(A)  # Keep A_log in fp32
-        if copies > 0:
-            A_log = repeat(A_log, "d n -> r d n", r=copies)
-            if merge:
-                A_log = A_log.flatten(0, 1)
-        A_log = nn.Parameter(A_log)
-        A_log._no_weight_decay = True
-        return A_log
+        # Step 1: Project x to delta_B_C
+        delta_B_C = self.x_proj(x)  # [B, L, D + d_state * 2]
+        (delta, B_parameter, C_parameter) = delta_B_C.split(
+            split_size=[self.dt_rank, self.d_state, self.d_state], dim=-1
+        )  # delta: (B, L, dt_rank). B, C: (B, L, d_state)
+        delta_parameter = F.softplus(self.dt_proj(delta))  # (B, L, D)
 
-    @staticmethod
-    def D_init(d_inner, copies=-1, device=None, merge=True):
-        # D "skip" parameter
-        D = torch.ones(d_inner, device=device)
-        if copies > 0:
-            D = repeat(D, "n1 -> r n1", r=copies)
-            if merge:
-                D = D.flatten(0, 1)
-        D = nn.Parameter(D)  # Keep in fp32
-        D._no_weight_decay = True
-        return D
+        y = self.selective_scan(x, delta_parameter, A_parameter, B_parameter, C_parameter, D_parameter)  # [B, L, D]
 
-    def cross_selective_scan(
-        self,
-        x: torch.Tensor = None,
-        x_proj_weight: torch.Tensor = None,
-        dt_projs_weight: torch.Tensor = None,
-        A_logs: torch.Tensor = None,
-        Ds: torch.Tensor = None,
-    ):
-        B, D, L = x.shape
-        D, N = A_logs.shape
-        D, R = dt_projs_weight.shape
+        return y
 
-        x_dbl = F.linear(rearrange(x, "b d l -> (b l) d"), x_proj_weight)
-
-        dts, Bs, Cs = torch.split(x_dbl, [R, N, N], dim=-1)
-        dts = dt_projs_weight @ dts.t()
-        dts = F.softplus(dts) * 0.001  # ADD for mine
-        dts = rearrange(dts, "d (b l) -> b l d", l=L)
-        Bs = rearrange(Bs, "(b l) dstate -> b dstate l", l=L).contiguous()
-        Cs = rearrange(Cs, "(b l) dstate -> b dstate l", l=L).contiguous()
-        As = -torch.exp(A_logs.to(torch.float))  # (D, d_state)
-        Ds = Ds.to(torch.float)  # (D)
+    def selective_scan(self, u, delta_parameter, A_parameter, B_parameter, C_parameter, D_parameter):
+        B, L, D = u.shape
 
         # Step 1: Discretize continuous parameters (A, B)
-        dt_A = torch.exp(einsum(dts, As, "B L D, D dstate -> B L D dstate"))
-        dt_B_x = einsum(dts, Bs, x, "B L D, B dstate L, B D L -> B L D dstate")
+        delta_A = torch.exp(einsum(delta_parameter, A_parameter, "B L D, D state_dim -> B L D state_dim"))
+        delta_B_u = einsum(delta_parameter, B_parameter, u, "B L D, B L state_dim, B L D -> B L D state_dim")
 
-        # Step 2: Perform selective scan
-        u = torch.zeros((B, D, N), device=dt_A.device)
+        x = torch.zeros((B, D, self.d_state), device=delta_A.device)
         ys = []
         for i in range(L):
-            u = dt_A[:, i] * u + dt_B_x[:, i]
-            y = einsum(u, Cs[:, :, i], "B D dstate, B dstate -> B D")
+            x = delta_A[:, i] * x + delta_B_u[:, i]
+            y = einsum(x, C_parameter[:, i, :], "B D state_dim, B state_dim -> B D")
             ys.append(y)
-        y = torch.stack(ys, dim=-1)  # [B, D, L]
-        y = y + einsum(x, Ds, "B D L, D -> B D L")  # [B, D, L]
+        y = torch.stack(ys, dim=1)  # [B, L, D]
 
-        # Normalize output
-        y = rearrange(y, "b d l -> b l d")
-        return y.to(x.dtype)
+        y = y + u * D_parameter  # [B, L, D]
 
-    def forward(self, x: torch.Tensor):
-        y = self.cross_selective_scan(
-            x,
-            self.x_proj.weight,
-            self.dt_projs.weight,
-            self.A_logs,
-            self.Ds,
-        )
         return y
 
 
 if __name__ == "__main__":
-    inp_1 = torch.randn(2, 96 * 2, 6)
+    inp_1 = torch.randn(2, 6, 2048)
     print("input.shape", inp_1.shape)
-    model = SSM(d_model=96)
+    model = SSM(d_model=2048)
     outputs = model(inp_1)
     print(outputs.shape)
 
-    inp_1 = torch.randn(2, 2048, 3, 2)
+    inp_1 = torch.randn(2, 6, 2048)
     print("input.shape", inp_1.shape)
-    model = MAMBA(in_cdim=2048, hidden_cdim=96)
+    model = Mamba(in_cdim=2048, d_model=96)
     outputs = model(inp_1)
     print(outputs.shape)

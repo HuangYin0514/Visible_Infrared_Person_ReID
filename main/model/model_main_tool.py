@@ -14,7 +14,7 @@ class Interaction(nn.Module):
     def __init__(self):
         super(Interaction, self).__init__()
 
-        self.cs_mamba = CS_MAMBA(in_cdim=2048, hidden_cdim=256)
+        self.cs_mamba = CS_MAMBA(in_cdim=2048, d_model=96)
 
     def forward(self, feat_map):
         B, C, H, W = feat_map.shape
