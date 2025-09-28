@@ -93,16 +93,16 @@ class CS_MAMBA(nn.Module):
         # unshuffle
         vis_feat_patch, inf_feat_patch = unshuffle_patch(ssm_out.squeeze())  # [B, C, n_patch] / [B, C, n_patch]
         # unpatch feat map
-        vis_long_feat_map = self.vis_patch_2_featmap(vis_feat_patch)  # [B, C, H, W]
-        inf_long_feat_map = self.inf_patch_2_featmap(inf_feat_patch)
+        vis_feat_map = self.vis_patch_2_featmap(vis_feat_patch)  # [B, C, H, W]
+        inf_feat_map = self.inf_patch_2_featmap(inf_feat_patch)
 
         # ---- Local ----
-        vis_local_feat_map = self.local_vis(vis_feat_map) * vis_feat_map  # [B, C, H, W]
-        inf_local_feat_map = self.local_inf(inf_feat_map) * inf_feat_map
+        vis_local = self.local_vis(vis_feat_map) * vis_feat_map + vis_feat_map  # [B, C, H, W]
+        inf_local = self.local_inf(inf_feat_map) * inf_feat_map + inf_feat_map
 
         # ---- FFN ----
-        out_vis = self.ffn_vis(0.5 * vis_long_feat_map + 0.5 * vis_local_feat_map)
-        out_inf = self.ffn_inf(0.5 * inf_long_feat_map + 0.5 * inf_local_feat_map)
+        out_vis = self.ffn_vis(vis_local)
+        out_inf = self.ffn_inf(inf_local)
         return out_vis, out_inf
 
 
