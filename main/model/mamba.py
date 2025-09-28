@@ -20,6 +20,7 @@ class Featmap_2_Patch(nn.Module):
 
     def forward(self, feat_map):
         B, C, H, W = feat_map.shape
+        feat_map = self.pooling(feat_map)
         feat_patch = rearrange(feat_map, "b c h w -> b c (h w)")
         return feat_patch
 
@@ -82,27 +83,28 @@ class CS_MAMBA(nn.Module):
         B, C, H, W = vis_feat_map.shape
 
         # ---- Mamba ----
-        # patch feat map
-        vis_feat_patch = self.vis_featmap_2_patch(vis_feat_map)  # [B, C, n_patch]
-        inf_feat_patch = self.inf_featmap_2_patch(inf_feat_map)  # [B, C, n_patch]
-        # shuffle
-        shuffle_feat_map = shuffle_patch(vis_feat_patch, inf_feat_patch).unsqueeze(3)  # [B, C, 2*n_patch, 1]
+        # Patch feat map
+        vis_feat_patch = self.vis_featmap_2_patch(vis_feat_map).unsqueeze(3)  # [B, C, n_patch, 1]
+        inf_feat_patch = self.inf_featmap_2_patch(inf_feat_map).unsqueeze(3)  # [B, C, n_patch, 1]
 
-        ssm_out = self.SS2D(self.norm_1(shuffle_feat_map)) + shuffle_feat_map  # SS2D # [B, C, 2*n_patch, 1]
+        # SS2D
+        vis_ssm_out = self.SS2D(self.norm_1(vis_feat_patch)) + vis_feat_patch  # SS2D # [B, C, n_patch, 1]
+        inf_ssm_out = self.SS2D(self.norm_1(inf_feat_patch)) + inf_feat_patch
 
-        # unshuffle
-        vis_feat_patch, inf_feat_patch = unshuffle_patch(ssm_out.squeeze())  # [B, C, n_patch] / [B, C, n_patch]
-        # unpatch feat map
-        vis_feat_map = self.vis_patch_2_featmap(vis_feat_patch)  # [B, C, H, W]
-        inf_feat_map = self.inf_patch_2_featmap(inf_feat_patch)
+        # Patch feat map
+        vis_ssm_out = self.vis_patch_2_featmap(vis_ssm_out.squeeze(3))  # [B, C, H, W]
+        inf_ssm_out = self.inf_patch_2_featmap(inf_ssm_out.squeeze(3))
 
-        # ---- Local ----
-        vis_local = self.local_vis(vis_feat_map) * vis_feat_map + vis_feat_map  # [B, C, H, W]
-        inf_local = self.local_inf(inf_feat_map) * inf_feat_map + inf_feat_map
+        # ---- Local Attention ----
+        vis_feat_attention = self.local_vis(vis_feat_map)
+        inf_feat_attention = self.local_inf(inf_feat_map)
+        vis_feat_map = vis_feat_map * inf_feat_attention
+        inf_feat_map = inf_feat_map * vis_feat_attention
 
         # ---- FFN ----
-        out_vis = self.ffn_vis(vis_local)
-        out_inf = self.ffn_inf(inf_local)
+        out_vis = self.ffn_vis(vis_feat_map)  # [B, C, H, W]
+        out_inf = self.ffn_inf(inf_feat_map)
+
         return out_vis, out_inf
 
 
