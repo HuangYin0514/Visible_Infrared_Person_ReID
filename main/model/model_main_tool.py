@@ -2,9 +2,10 @@ import copy
 
 import torch
 import torch.nn as nn
+from einops import einsum, rearrange, repeat
 from torch.nn import functional as F
 
-from .mamba import MAMBA
+from .mamba import Mamba
 from .model_aux_tool import Gate_Fusion
 
 
@@ -18,12 +19,13 @@ class Interaction(nn.Module):
         self.vis_part_pool = nn.ModuleList()
         self.vis_part_att = nn.ModuleList()
         for i in range(self.part_num):
-            self.vis_part_pool.append(nn.AdaptiveMaxPool2d((1, 1)))
+            self.vis_part_pool.append(nn.AdaptiveAvgPool2d((1, 1)))
             self.vis_part_att.append(
                 nn.Sequential(
-                    nn.Conv2d(2048, 2048, kernel_size=1, stride=1, padding=0),
+                    nn.Linear(2048, 2048, bias=False),
+                    nn.BatchNorm1d(2048),
                     nn.ReLU(inplace=True),
-                    nn.Conv2d(2048, 2048, kernel_size=1, stride=1, padding=0),
+                    nn.Linear(2048, 2048, bias=False),
                     nn.Sigmoid(),
                 )
             )
@@ -31,13 +33,7 @@ class Interaction(nn.Module):
         self.inf_part_pool = copy.deepcopy(self.vis_part_pool)
         self.inf_part_att = copy.deepcopy(self.vis_part_att)
 
-        # self.mamba = nn.Sequential(
-        #     nn.Conv2d(2048, 2048, kernel_size=1, stride=1, padding=0),
-        #     nn.BatchNorm2d(2048),
-        #     nn.ReLU(inplace=True),
-        # )
-
-        self.mamba = MAMBA(in_cdim=2048, hidden_cdim=256)
+        self.mamba = Mamba(in_cdim=2048, d_model=256)
 
         self.vis_add_inf = nn.Sequential(
             nn.Conv2d(2048, 2048, kernel_size=1, stride=1, padding=0),
@@ -61,21 +57,23 @@ class Interaction(nn.Module):
 
         mixed_feat = []
         for i in range(self.part_num):
-            mixed_feat.append(self.vis_part_pool[i](vis_part_feat_map[i]).squeeze(-1))
-            mixed_feat.append(self.inf_part_pool[i](inf_part_feat_map[i]).squeeze(-1))
-        mixed_feat = torch.stack(mixed_feat, dim=2)  # [B//2, C, self.part_num * 2, 1]
+            mixed_feat.append(self.vis_part_pool[i](vis_part_feat_map[i]).squeeze())
+            mixed_feat.append(self.inf_part_pool[i](inf_part_feat_map[i]).squeeze())
+        mixed_feat = torch.stack(mixed_feat, dim=2)  # [B//2, C, self.part_num * 2]
 
         # Mamba
-        mamba_feat = self.mamba(mixed_feat)  # [B//2, C, self.part_num * 2, 1]
-        vis_mamba_feat = mamba_feat[:, :, 0::2]  # [B//2, C, self.part_num, 1]
+        mixed_feat = rearrange(mixed_feat, "B C L -> B L C")  # [B//2, self.part_num * 2, C]
+        mamba_feat = self.mamba(mixed_feat)  # [B//2, C, self.part_num * 2]
+        mamba_feat = rearrange(mamba_feat, "B L C-> B C L")  # [B//2, C, self.part_num * 2]
+        vis_mamba_feat = mamba_feat[:, :, 0::2]  # [B//2, C, self.part_num]
         inf_mamba_feat = mamba_feat[:, :, 1::2]
 
         # Weighted Fusion
         vis_weighted_feat_map = []  # [B//2, C, H, W]
         inf_weighted_feat_map = []
         for i in range(self.part_num):
-            vis_weight_i = self.vis_part_att[i](vis_mamba_feat[:, :, i].unsqueeze(-1))
-            inf_weight_i = self.inf_part_att[i](inf_mamba_feat[:, :, i].unsqueeze(-1))
+            vis_weight_i = self.vis_part_att[i](vis_mamba_feat[:, :, i]).view(int(B // 2), C, 1, 1)
+            inf_weight_i = self.inf_part_att[i](inf_mamba_feat[:, :, i]).view(int(B // 2), C, 1, 1)
             vis_weighted_feat_map.append(vis_weight_i * vis_part_feat_map[i])
             inf_weighted_feat_map.append(inf_weight_i * inf_part_feat_map[i])
         vis_weighted_feat_map = torch.cat(vis_weighted_feat_map, dim=2)
