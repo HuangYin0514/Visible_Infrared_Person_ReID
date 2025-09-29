@@ -34,7 +34,7 @@ class Patch_2_Featmap(nn.Module):
 
 
 class CS_MAMBA(nn.Module):
-    def __init__(self, in_cdim=2048, d_model=96):
+    def __init__(self, in_cdim=2048, d_model=256):
         super(CS_MAMBA, self).__init__()
 
         # Mamba
@@ -44,12 +44,10 @@ class CS_MAMBA(nn.Module):
         self.vi_patch_2_featmap = Patch_2_Featmap()
         self.norm_2 = nn.LayerNorm(in_cdim * 2)
 
-        self.vis_attention = nn.Sequential(
+        self.attention = nn.Sequential(
             nn.Linear(POOL_HEGHT * POOL_WIDTH, 1, bias=False),
             nn.Sigmoid(),
         )
-
-        self.inf_attention = copy.deepcopy(self.vis_attention)
 
         # FFN
         self.ffn_vis = nn.Sequential(
@@ -73,11 +71,9 @@ class CS_MAMBA(nn.Module):
         vi_feat_patch = rearrange(vi_feat_patch, "B L D -> B D L")  # [B, 2C, n_patch]
 
         # --- Attention ---
-        # vi_attention = self.attention(vi_feat_patch)  # [B, 2C, 1]
-        # # vis_attention, inf_attention = vi_attention.split(split_size=[C, C], dim=1)
-        # vis_attention, inf_attention = vi_attention[:, 0::2, :], vi_attention[:, 1::2, :]
-        vis_attention = self.vis_attention(vi_feat_patch[:, 0::2, :])  # [B, C, 1]
-        inf_attention = self.inf_attention(vi_feat_patch[:, 1::2, :])  # [B, C, 1]
+        vi_attention = self.attention(vi_feat_patch)  # [B, 2C, 1]
+        # vis_attention, inf_attention = vi_attention.split(split_size=[C, C], dim=1)
+        vis_attention, inf_attention = vi_attention[:, 0::2, :], vi_attention[:, 1::2, :]
 
         # ---- FFN ----
         out_vis = self.ffn_vis(vis_attention.unsqueeze(3) * vis_feat_map)
