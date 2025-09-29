@@ -45,7 +45,7 @@ class CS_MAMBA(nn.Module):
         self.norm_2 = nn.LayerNorm(in_cdim * 2)
 
         self.attention = nn.Sequential(
-            nn.Linear(POOL_HEGHT * POOL_WIDTH, 1, bias=False),
+            nn.Linear(2048 * 2, 2048 * 2, bias=False),
             nn.Sigmoid(),
         )
 
@@ -71,13 +71,14 @@ class CS_MAMBA(nn.Module):
         vi_feat_patch = rearrange(vi_feat_patch, "B L D -> B D L")  # [B, 2C, n_patch]
 
         # --- Attention ---
-        vi_attention = self.attention(vi_feat_patch)  # [B, 2C, 1]
-        # vis_attention, inf_attention = vi_attention.split(split_size=[C, C], dim=1)
-        vis_attention, inf_attention = vi_attention[:, 0::2, :], vi_attention[:, 1::2, :]
+        vi_feat_patch = vi_feat_patch.mean(2)  # [B, 2C]
+        vi_attention = self.attention(vi_feat_patch)  # [B, 2C]
+        vis_attention = vi_attention[:, 0::2].unsqueeze(2).unsqueeze(3)  # [B, 2C, 1, 1]
+        inf_attention = vi_attention[:, 1::2].unsqueeze(2).unsqueeze(3)
 
         # ---- FFN ----
-        out_vis = self.ffn_vis(vis_attention.unsqueeze(3) * vis_feat_map)
-        out_inf = self.ffn_inf(inf_attention.unsqueeze(3) * inf_feat_map)
+        out_vis = self.ffn_vis(vis_attention * vis_feat_map)
+        out_inf = self.ffn_inf(inf_attention * inf_feat_map)
         return out_vis, out_inf
 
 
