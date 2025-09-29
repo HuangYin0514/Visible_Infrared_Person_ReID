@@ -1,3 +1,4 @@
+import copy
 import math
 import numbers
 
@@ -6,34 +7,83 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import einsum, rearrange, repeat
 
+POOL_HEGHT = 6
+POOL_WIDTH = 1
 
-#############################################################
-class Mamba(nn.Module):
-    def __init__(self, in_cdim=2048, d_model=96):
-        super(Mamba, self).__init__()
 
-        # Mamba
-        self.norm_1 = nn.LayerNorm(in_cdim)
-        self.ss1d = SS1D(in_cdim=in_cdim, d_model=d_model)
+class Featmap_2_Patch(nn.Module):
+    def __init__(self):
+        super(Featmap_2_Patch, self).__init__()
+        self.pooling = nn.AdaptiveAvgPool2d((POOL_HEGHT, POOL_WIDTH))
 
-        # FFN
-        self.norm_2 = nn.LayerNorm(in_cdim)
-        self.ffn = nn.Sequential(
-            nn.Linear(in_cdim, in_cdim, bias=False),
-            nn.LayerNorm(in_cdim),
-            nn.ReLU(),
-        )
-
-    def forward(self, feat_patch):
-        B, L, C = feat_patch.shape
-        feat_patch = self.ss1d(self.norm_1(feat_patch)) + feat_patch  # [B, n_patch, C]
-        # feat_patch = self.ffn(self.norm_2(feat_patch)) + feat_patch  # [B, n_patch, C]
+    def forward(self, feat_map):
+        B, C, H, W = feat_map.shape
+        feat_patch = rearrange(self.pooling(feat_map), "b c h w -> b c (h w)")
         return feat_patch
 
 
-class SS1D(nn.Module):
+class Patch_2_Featmap(nn.Module):
+    def __init__(self):
+        super(Patch_2_Featmap, self).__init__()
+
+    def forward(self, feat_patch):
+        B, C, L = feat_patch.shape
+        feat_map = rearrange(feat_patch.squeeze(), "b c (h w)-> b c h w", h=POOL_HEGHT, w=POOL_WIDTH)
+        feat_map = F.interpolate(feat_map, size=(18, 9), mode="nearest")
+        return feat_map
+
+
+class CS_MAMBA(nn.Module):
     def __init__(self, in_cdim=2048, d_model=96):
-        super(SS1D, self).__init__()
+        super(CS_MAMBA, self).__init__()
+
+        # Mamba
+        self.norm_1 = nn.LayerNorm(in_cdim * 2)
+        self.vi_featmap_2_patch = Featmap_2_Patch()
+        self.mamba = Mamba(in_cdim=in_cdim * 2, d_model=d_model)
+        self.vi_patch_2_featmap = Patch_2_Featmap()
+        self.norm_2 = nn.LayerNorm(in_cdim * 2)
+
+        self.attention = nn.Sequential(
+            nn.Linear(POOL_HEGHT * POOL_WIDTH, 1, bias=False),
+            nn.Sigmoid(),
+        )
+
+        # FFN
+        self.ffn_vis = nn.Sequential(
+            nn.Conv2d(in_cdim, in_cdim, 1, 1, 0),
+            nn.BatchNorm2d(in_cdim),
+            nn.ReLU(),
+        )
+        self.ffn_inf = copy.deepcopy(self.ffn_vis)
+
+    def forward(self, vis_feat_map, inf_feat_map):
+        B, C, H, W = vis_feat_map.shape
+
+        vi_feat_map = torch.stack((vis_feat_map, inf_feat_map), dim=2)  # [B, C, 2, H, W]
+        vi_feat_map = rearrange(vi_feat_map, "B C D H W -> B (C D) H W")  # [B, 2C, H, W]
+
+        # ---- Mamba ----
+        vi_feat_patch = self.vi_featmap_2_patch(vi_feat_map)  # [B, 2C, n_patch]
+        vi_feat_patch = rearrange(vi_feat_patch, "B D L -> B L D")  # [B, n_patch, 2C]
+        vi_feat_patch = self.mamba(self.norm_1(vi_feat_patch)) + vi_feat_patch  # [B, n_patch, 2C]
+        vi_feat_patch = self.norm_2(vi_feat_patch)
+        vi_feat_patch = rearrange(vi_feat_patch, "B L D -> B D L")  # [B, 2C, n_patch]
+
+        # --- Attention ---
+        vi_attention = self.attention(vi_feat_patch)  # [B, 2C, 1]
+        # vis_attention, inf_attention = vi_attention.split(split_size=[C, C], dim=1)
+        vis_attention, inf_attention = vi_attention[:, 0::2, :], vi_attention[:, 1::2, :]
+
+        # ---- FFN ----
+        out_vis = self.ffn_vis(vis_attention.unsqueeze(3) * vis_feat_map)
+        out_inf = self.ffn_inf(inf_attention.unsqueeze(3) * inf_feat_map)
+        return out_vis, out_inf
+
+
+class Mamba(nn.Module):
+    def __init__(self, in_cdim=2048, d_model=96):
+        super(Mamba, self).__init__()
 
         ssm_ratio = 1.0
         d_inner = int(ssm_ratio * d_model)
@@ -102,7 +152,7 @@ class SSM(nn.Module):
         (delta, B_parameter, C_parameter) = delta_B_C.split(
             split_size=[self.dt_rank, self.d_state, self.d_state], dim=-1
         )  # delta: (B, L, dt_rank). B, C: (B, L, d_state)
-        delta_parameter = F.softplus(self.dt_proj(delta)) * 0.001  # (B, L, D)
+        delta_parameter = F.softplus(self.dt_proj(delta))  # (B, L, D)
 
         y = self.selective_scan(x, delta_parameter, A_parameter, B_parameter, C_parameter, D_parameter)  # [B, L, D]
 
@@ -129,6 +179,11 @@ class SSM(nn.Module):
 
 
 if __name__ == "__main__":
+    inp_1 = torch.randn(2, 6, 2048)
+    print("input.shape", inp_1.shape)
+    model = SSM(d_model=2048)
+    outputs = model(inp_1)
+    print(outputs.shape)
 
     inp_1 = torch.randn(2, 6, 2048)
     print("input.shape", inp_1.shape)
