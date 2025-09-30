@@ -42,9 +42,11 @@ class CS_MAMBA(nn.Module):
         self.vi_featmap_2_patch = Featmap_2_Patch()
         self.mamba = Mamba(in_cdim=in_cdim * 2, d_model=d_model)
         self.vi_patch_2_featmap = Patch_2_Featmap()
+        self.norm_2 = nn.LayerNorm(in_cdim * 2)
 
-        self.norm_2 = nn.LayerNorm(POOL_HEGHT * POOL_WIDTH)
         self.attention = nn.Sequential(
+            nn.Linear(POOL_HEGHT * POOL_WIDTH, POOL_HEGHT * POOL_WIDTH, bias=False),
+            nn.ReLU(inplace=True),
             nn.Linear(POOL_HEGHT * POOL_WIDTH, 1, bias=False),
             nn.Sigmoid(),
         )
@@ -67,10 +69,10 @@ class CS_MAMBA(nn.Module):
         vi_feat_patch = self.vi_featmap_2_patch(vi_feat_map)  # [B, 2C, n_patch]
         vi_feat_patch = rearrange(vi_feat_patch, "B D L -> B L D")  # [B, n_patch, 2C]
         vi_feat_patch = self.mamba(self.norm_1(vi_feat_patch)) + vi_feat_patch  # [B, n_patch, 2C]
+        vi_feat_patch = self.norm_2(vi_feat_patch)
         vi_feat_patch = rearrange(vi_feat_patch, "B L D -> B D L")  # [B, 2C, n_patch]
 
         # --- Attention ---
-        vi_feat_patch = self.norm_2(vi_feat_patch)
         vi_attention = self.attention(vi_feat_patch)  # [B, 2C, 1]
         # vis_attention, inf_attention = vi_attention.split(split_size=[C, C], dim=1)
         vis_attention, inf_attention = vi_attention[:, 0::2, :], vi_attention[:, 1::2, :]
