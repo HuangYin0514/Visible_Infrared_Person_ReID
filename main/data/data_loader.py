@@ -6,7 +6,7 @@ import torch.utils.data as data
 import torchvision.transforms as transforms
 from PIL import Image
 
-from .data_manager import process_gallery_sysu, process_query_sysu
+from .data_manager import process_gallery_sysu, process_query_sysu, process_test_regdb
 from .random_erasing import RandomErasing
 
 
@@ -56,7 +56,14 @@ class Data_Loder:
             gallery_img, gallery_label, gallery_cam = process_gallery_sysu(config.DATASET.TRAIN_DATASET_PATH, mode=config.DATASET.MODE, trial=0)
 
         elif config.DATASET.TRAIN_DATASET == "reg_db":
-            pass
+            trainset = RegDBData(data_dir=config.DATASET.TRAIN_DATASET_PATH, trial=config.DATASET.TRIAL, transform=transform_train)
+            # generate the idx of each person identity
+            color_pos, thermal_pos = GenIdx(trainset.color_label, trainset.thermal_label)
+
+            # testing set
+            query_img, query_label = process_test_regdb(config.DATASET.TRAIN_DATASET_PATH, trial=config.DATASET.TRIAL, modal="visible")
+            gallery_img, gallery_label = process_test_regdb(config.DATASET.TRAIN_DATASET_PATH, trial=config.DATASET.TRIAL, modal="thermal")
+            query_cam, gallery_cam = None, None
 
         queryset = TestDataset(query_img, query_label, transform=transform_test, img_size=config.DATALOADER.IMAGE_SIZE)
         gallset = TestDataset(gallery_img, gallery_label, transform=transform_test, img_size=config.DATALOADER.IMAGE_SIZE)
@@ -144,7 +151,6 @@ def load_data(input_data_path):
 class RegDBData(data.Dataset):
     def __init__(self, data_dir, trial, transform=None, colorIndex=None, thermalIndex=None):
         # Load training images (path) and labels
-        data_dir = "../Datasets/RegDB/"
         train_color_list = data_dir + "idx/train_visible_{}".format(trial) + ".txt"
         train_thermal_list = data_dir + "idx/train_thermal_{}".format(trial) + ".txt"
 
@@ -168,12 +174,12 @@ class RegDBData(data.Dataset):
         train_thermal_image = np.array(train_thermal_image)
 
         # BGR to RGB
-        self.train_color_image = train_color_image
-        self.train_color_label = train_color_label
+        self.color_image = train_color_image
+        self.color_label = train_color_label
 
         # BGR to RGB
-        self.train_thermal_image = train_thermal_image
-        self.train_thermal_label = train_thermal_label
+        self.thermal_image = train_thermal_image
+        self.thermal_label = train_thermal_label
 
         self.transform = transform
         self.cIndex = colorIndex
@@ -181,8 +187,8 @@ class RegDBData(data.Dataset):
 
     def __getitem__(self, index):
 
-        img1, target1 = self.train_color_image[self.cIndex[index]], self.train_color_label[self.cIndex[index]]
-        img2, target2 = self.train_thermal_image[self.tIndex[index]], self.train_thermal_label[self.tIndex[index]]
+        img1, target1 = self.color_image[self.cIndex[index]], self.color_label[self.cIndex[index]]
+        img2, target2 = self.thermal_image[self.tIndex[index]], self.thermal_label[self.tIndex[index]]
 
         img1 = self.transform(img1)
         img2 = self.transform(img2)
@@ -190,7 +196,7 @@ class RegDBData(data.Dataset):
         return img1, img2, target1, target2
 
     def __len__(self):
-        return len(self.train_color_label)
+        return len(self.color_label)
 
 
 class TestDataset(data.Dataset):
