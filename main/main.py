@@ -174,7 +174,7 @@ def run(config):
                         modal_map = {0: "inf", 1: "vis"}
                         modal = modal_map.get(loader_id)
                     elif config.DATASET.TRAIN_DATASET == "reg_db":
-                        modal_map = {0: "inf", 1: "vis"}
+                        modal_map = {1: "inf", 0: "vis"}
                         modal = modal_map.get(loader_id)
                     ptr = 0
                     for imgs, labels in loader:
