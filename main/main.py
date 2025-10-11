@@ -9,7 +9,7 @@ import torch.utils.data as data
 import util
 from criterion import Criterion
 from data import Data_Loder, IdentitySampler
-from eval_metrics import eval_sysu
+from eval_metrics import eval_regdb, eval_sysu
 from model import ReIDNet
 from optimizer import Optimizer
 from scheduler import Scheduler
@@ -173,6 +173,9 @@ def run(config):
                     if config.DATASET.TRAIN_DATASET == "sysu_mm01":
                         modal_map = {0: "inf", 1: "vis"}
                         modal = modal_map.get(loader_id)
+                    elif config.DATASET.TRAIN_DATASET == "reg_db":
+                        modal_map = {1: "inf", 0: "vis"}
+                        modal = modal_map.get(loader_id)
                     ptr = 0
                     for imgs, labels in loader:
                         batch_num = imgs.size(0)
@@ -201,6 +204,12 @@ def run(config):
                     data_loder.gallery_label,
                     data_loder.query_cam,
                     data_loder.gallery_cam,
+                )
+            elif config.DATASET.TRAIN_DATASET == "reg_db":
+                cmc, mAP, mINP = eval_regdb(
+                    -distmat,
+                    data_loder.query_label,
+                    data_loder.gallery_label,
                 )
 
             is_best_rank_flag = cmc[0] >= best_rank1
