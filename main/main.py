@@ -116,13 +116,17 @@ def run(config):
                 backbone_feat = net.backbone_pooling(backbone_feat_map).squeeze()
                 backbone_bn_feat, backbone_cls_score = net.backbone_classifier(backbone_feat)
                 backbone_pid_loss = criterion.id(backbone_cls_score, labels)
-                loss_ctl = criterion.ctl(backbone_feat, labels)[0]
+                # backbone_tri_loss = criterion.tri(backbone_feat, labels)[0]
+                loss_hcc_euc = criterion.hcc(backbone_feat, labels, "euc")
+                loss_hcc_kl = criterion.hcc(backbone_cls_score, labels, "kl")
 
-                total_loss += backbone_pid_loss + loss_ctl
+                total_loss += backbone_pid_loss + loss_hcc_euc + loss_hcc_kl
                 meter.update(
                     {
                         "backbone_pid_loss": backbone_pid_loss.item(),
-                        "loss_ctl": loss_ctl.item(),
+                        # "backbone_tri_loss": backbone_tri_loss.item(),
+                        "loss_hcc_euc": loss_hcc_euc.item(),
+                        "loss_hcc_kl": loss_hcc_kl.item(),
                     }
                 )
 
