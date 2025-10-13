@@ -104,7 +104,7 @@ def run(config):
             net.train()
             if config.MODEL.MODULE == "Lucky":
                 total_loss = 0
-                batch_size = vis_imgs.size(0) * 2
+                B = vis_imgs.size(0) * 2
 
                 vis_labels, inf_labels = vis_labels.to(DEVICE), inf_labels.to(DEVICE)
                 labels = torch.cat([vis_labels, inf_labels], 0)
@@ -112,24 +112,45 @@ def run(config):
 
                 backbone_feat_map = net(vis_imgs, inf_imgs, modal="all")
 
-                # Backbone
-                backbone_feat = net.backbone_pooling(backbone_feat_map).squeeze()
-                backbone_bn_feat, backbone_cls_score = net.backbone_classifier(backbone_feat)
-                backbone_pid_loss = criterion.id(backbone_cls_score, labels)
-                # backbone_tri_loss = criterion.tri(backbone_feat, labels)[0]
-                loss_hcc_euc = criterion.hcc(backbone_feat, labels, "euc")
-                loss_hcc_kl = criterion.hcc(backbone_cls_score, labels, "kl")
+                num_stripes = 6
+                stripe_h = int(18 / num_stripes)
+                local_feat_list = []
+                for i in range(num_stripes):
+                    # gm pool
+                    local_feat = backbone_feat_map[:, :, i * stripe_h : (i + 1) * stripe_h, :]
+                    local_feat = local_feat.view(B, 2048, -1)
+                    p = 10.0  # regDB: 10.0    SYSU: 3.0
+                    local_feat = (torch.mean(local_feat**p, dim=-1) + 1e-12) ** (1 / p)
+                    local_feat = net.local_conv_list[i](local_feat.view(B, 2048, 1, 1))
+                    local_feat = local_feat.view(B, -1)
+                    local_feat_list.append(local_feat)
+                global_feat = torch.cat(local_feat_list, dim=1)
 
-                total_loss += backbone_pid_loss + loss_hcc_euc + loss_hcc_kl
+                # ----------- Local ------------
+                local_loss = 0
+                for i in range(num_stripes):
+                    local_feat_i = local_feat_list[i]
+                    local_bn_feat, local_cls_score = net.local_classifier_list[i](local_feat_i)
+                    local_pid_loss = criterion.id(local_cls_score, labels)
+                    local_hcc_euc_loss = criterion.hcc(local_feat_i, labels, "euc")
+                    local_hcc_kl_loss = criterion.hcc(local_cls_score, labels, "kl")
+                    local_loss += local_pid_loss + local_hcc_euc_loss + local_hcc_kl_loss
+
+                # ----------- Global ------------
+                global_bn_feat, global_cls_score = net.global_classifier(global_feat)
+                global_loss = 0
+                global_pid_loss = criterion.id(global_cls_score, labels)
+                global_hcc_euc_loss = criterion.hcc(global_feat, labels, "euc")
+                global_hcc_kl_loss = criterion.hcc(global_cls_score, labels, "kl")
+                global_loss += global_pid_loss + global_hcc_euc_loss + global_hcc_kl_loss
+
+                total_loss += local_loss + global_loss
                 meter.update(
                     {
-                        "backbone_pid_loss": backbone_pid_loss.item(),
-                        # "backbone_tri_loss": backbone_tri_loss.item(),
-                        "loss_hcc_euc": loss_hcc_euc.item(),
-                        "loss_hcc_kl": loss_hcc_kl.item(),
+                        "local_loss": local_loss.item(),
+                        "global_loss": global_loss.item(),
                     }
                 )
-
                 optimizer.zero_grad()
                 total_loss.backward()
                 optimizer.step()
@@ -142,9 +163,9 @@ def run(config):
         #########
         if epoch % config.TEST.EVAL_EPOCH == 0:
             net.eval()
-
-            query_feat = np.zeros((data_loder.N_query, 2048))
-            gall_feat = np.zeros((data_loder.N_gallery, 2048))
+            feat_dim = 512 * 6  # 2048
+            query_feat = np.zeros((data_loder.N_query, feat_dim))
+            gall_feat = np.zeros((data_loder.N_gallery, feat_dim))
             loaders = [data_loder.query_loader, data_loder.gallery_loader]
             print(util.time_now(), "Start extracting features...")
             with torch.no_grad():

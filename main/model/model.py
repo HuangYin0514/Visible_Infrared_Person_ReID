@@ -24,6 +24,23 @@ class ReIDNet(nn.Module):
         self.backbone_pooling = GeneralizedMeanPoolingP()
         self.backbone_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
 
+        # ------------- Local -----------------------
+        self.local_conv_list = nn.ModuleList()
+        num_stripes = 6
+        for _ in range(num_stripes):
+            pool_dim = 2048
+            local_conv_out_channels = 512
+            conv = nn.Conv2d(pool_dim, local_conv_out_channels, 1)
+            conv.apply(weights_init_kaiming)
+            self.local_conv_list.append(nn.Sequential(conv, nn.BatchNorm2d(local_conv_out_channels), nn.ReLU(inplace=True)))
+
+        self.local_classifier_list = nn.ModuleList()
+        for _ in range(num_stripes):
+            local_conv_out_channels = 512
+            local_classifier_i = Classifier(local_conv_out_channels, n_class)
+            self.local_classifier_list.append(local_classifier_i)
+        self.global_classifier = Classifier(512 * num_stripes, n_class)
+
         # ------------- Interaction -----------------------
         self.interaction = Interaction()
         # self.interaction_pooling = GeneralizedMeanPoolingP()
@@ -38,17 +55,29 @@ class ReIDNet(nn.Module):
         self.propagation = Propagation(T=4)
 
     def forward(self, x_vis, x_inf, modal):
-        backbone_feature_map = self.backbone(x_vis, x_inf, modal)
+        B, C, H, W = x_vis.shape
+        backbone_feat_map = self.backbone(x_vis, x_inf, modal)
 
         if self.training:
-            return backbone_feature_map
+            return backbone_feat_map
         else:
             eval_features = []
 
-            # Backbone
-            backbone_features = self.backbone_pooling(backbone_feature_map).squeeze()
-            backbone_bn_features, backbone_cls_score = self.backbone_classifier(backbone_features)
-            eval_features.append(backbone_bn_features)
+            num_stripes = 6
+            stripe_h = int(18 / num_stripes)
+            local_feat_list = []
+            for i in range(num_stripes):
+                # gm pool
+                local_feat = backbone_feat_map[:, :, i * stripe_h : (i + 1) * stripe_h, :]
+                local_feat = local_feat.view(B, 2048, -1)
+                p = 10.0  # regDB: 10.0    SYSU: 3.0
+                local_feat = (torch.mean(local_feat**p, dim=-1) + 1e-12) ** (1 / p)
+                local_feat = self.local_conv_list[i](local_feat.view(B, 2048, 1, 1))
+                local_feat = local_feat.view(B, -1)
+                local_feat_list.append(local_feat)
+            global_feat = torch.cat(local_feat_list, dim=1)
+            global_bn_feat, global_cls_score = self.global_classifier(global_feat)
+            eval_features.append(global_bn_feat)
 
             eval_features = torch.cat(eval_features, dim=1)
             return eval_features
@@ -100,9 +129,7 @@ class Backbone(nn.Module):
         )
         self.inf_specific_layer = copy.deepcopy(self.vis_specific_layer)
 
-        self.vis_layer1 = resnet.layer1  # 3 blocks
-        self.inf_layer1 = copy.deepcopy(self.vis_layer1)
-
+        self.layer1 = resnet.layer1  # 3 blocks
         self.layer2 = resnet.layer2  # 4 blocks
         self.layer3 = resnet.layer3  # 6 blocks
         self.layer4 = resnet.layer4  # 3 blocks
@@ -125,18 +152,15 @@ class Backbone(nn.Module):
         if modal == "all":
             x_vis = self.vis_specific_layer(x_vis)
             x_inf = self.inf_specific_layer(x_inf)
-            x_vis = self.vis_layer1(x_vis)
-            x_inf = self.inf_layer1(x_inf)
-            out = torch.cat([x_vis, x_inf], dim=0)
+            x = torch.cat([x_vis, x_inf], dim=0)
         elif modal == "vis":
             x_vis = self.vis_specific_layer(x_vis)
             x = x_vis
-            out = self.vis_layer1(x)
         elif modal == "inf":
             x_inf = self.inf_specific_layer(x_inf)
             x = x_inf
-            out = self.inf_layer1(x)
 
+        out = self.layer1(x)
         # out = self._NL_forward_layer(out, self.layer2, self.NL_2)
         # out = self._NL_forward_layer(out, self.layer3, self.NL_3)
         out = self.layer2(out)
