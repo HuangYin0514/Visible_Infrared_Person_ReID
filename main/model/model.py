@@ -124,14 +124,16 @@ class Backbone(nn.Module):
             x_vis = self.vis_specific_layer(x_vis)
             x_inf = self.inf_specific_layer(x_inf)
             x = torch.cat([x_vis, x_inf], dim=0)
+            out = self.layer1(x)
         elif modal == "vis":
             x_vis = self.vis_specific_layer(x_vis)
             x = x_vis
+            out = self.layer1(x)
         elif modal == "inf":
             x_inf = self.inf_specific_layer(x_inf)
             x = x_inf
+            out = self.layer1(x)
 
-        out = self.layer1(x)
         # out = self._NL_forward_layer(out, self.layer2, self.NL_2)
         # out = self._NL_forward_layer(out, self.layer3, self.NL_3)
         out = self.layer2(out)
