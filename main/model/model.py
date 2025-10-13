@@ -100,7 +100,9 @@ class Backbone(nn.Module):
         )
         self.inf_specific_layer = copy.deepcopy(self.vis_specific_layer)
 
-        self.layer1 = resnet.layer1  # 3 blocks
+        self.vis_layer1 = resnet.layer1  # 3 blocks
+        self.inf_layer1 = copy.deepcopy(self.vis_layer1)
+
         self.layer2 = resnet.layer2  # 4 blocks
         self.layer3 = resnet.layer3  # 6 blocks
         self.layer4 = resnet.layer4  # 3 blocks
@@ -123,16 +125,17 @@ class Backbone(nn.Module):
         if modal == "all":
             x_vis = self.vis_specific_layer(x_vis)
             x_inf = self.inf_specific_layer(x_inf)
-            x = torch.cat([x_vis, x_inf], dim=0)
-            out = self.layer1(x)
+            x_vis = self.vis_layer1(x_vis)
+            x_inf = self.inf_layer1(x_inf)
+            out = torch.cat([x_vis, x_inf], dim=0)
         elif modal == "vis":
             x_vis = self.vis_specific_layer(x_vis)
             x = x_vis
-            out = self.layer1(x)
+            out = self.vis_layer1(x)
         elif modal == "inf":
             x_inf = self.inf_specific_layer(x_inf)
             x = x_inf
-            out = self.layer1(x)
+            out = self.inf_layer1(x)
 
         # out = self._NL_forward_layer(out, self.layer2, self.NL_2)
         # out = self._NL_forward_layer(out, self.layer3, self.NL_3)
