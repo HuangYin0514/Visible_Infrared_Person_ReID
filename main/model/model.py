@@ -73,6 +73,7 @@ class ReIDNet(nn.Module):
             return eval_features
 
 
+#############################################################
 class Normalize(nn.Module):
     def __init__(self, power=2):
         super(Normalize, self).__init__()
@@ -84,7 +85,6 @@ class Normalize(nn.Module):
         return out
 
 
-#############################################################
 class Classifier(nn.Module):
     """
     BN -> Classifier
