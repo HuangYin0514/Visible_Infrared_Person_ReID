@@ -14,7 +14,7 @@ wandb login c74133df8c2cf575304acf8a99fe03ab74b6fe6a
 # python main.py --config_file "config/method.yml" TASK.NOTES=V106 TASK.NAME=B_IP OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_INTERACTION_FLAG=False MODEL.MODAL_CALIBRATION_FLAG=False MODEL.MODAL_PROPAGATION_FALG=True
 
 # --------------- reg_db --------------------------------
-python main.py --config_file "config/method.yml" TASK.NOTES=V235 TASK.NAME=B_I_C_P_regdb_8 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=8
+python main.py --config_file "config/method.yml" TASK.NOTES=V236 TASK.NAME=B_I_C_P_regdb_8 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=8
 
 # python main.py --config_file "config/method.yml" TASK.NOTES=V219 TASK.NAME=B_I_C_P_regdb_1 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=1
 # python main.py --config_file "config/method.yml" TASK.NOTES=V219 TASK.NAME=B_I_C_P_regdb_2 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=2
@@ -30,5 +30,3 @@ python main.py --config_file "config/method.yml" TASK.NOTES=V235 TASK.NAME=B_I_C
 
 # --------------- TODO --------------------------------
 # 1. GEM池化
-# 2. 修改损失函数    2——》1
-# 3. 损失函数权重
