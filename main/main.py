@@ -128,8 +128,10 @@ def run(config):
 
                 # ----------- Global ------------
                 global_feat = torch.cat(local_feat_list, dim=1)
+                global_bn_feat, global_cls_score = net.global_classifier(global_feat)
+                global_id_loss = criterion.id(global_cls_score, labels)
                 global_ctl_loss = criterion.ctl(global_feat, labels)[0]
-                global_loss = global_ctl_loss
+                global_loss = global_id_loss + global_ctl_loss
 
                 # ----------- Local ------------
                 local_loss = 0
