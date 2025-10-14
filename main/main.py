@@ -130,8 +130,9 @@ def run(config):
                 global_feat = torch.cat(local_feat_list, dim=1)
                 global_bn_feat, global_cls_score = net.global_classifier(global_feat)
                 global_id_loss = criterion.id(global_cls_score, labels)
-                global_ctl_loss = criterion.ctl(global_feat, labels)[0]
-                global_loss = global_id_loss + global_ctl_loss
+                # global_ctl_loss = criterion.ctl(global_feat, labels)[0]
+                global_hcc_loss = criterion.hcc(global_feat, labels, "euc") + criterion.hcc(global_cls_score, labels, "kl")
+                global_loss = global_id_loss + global_hcc_loss
 
                 # ----------- Local ------------
                 local_loss = 0
@@ -139,8 +140,9 @@ def run(config):
                     local_feat_i = local_feat_list[i]
                     local_bn_feat, local_cls_score = net.local_classifier_list[i](local_feat_i)
                     local_pid_loss = criterion.id(local_cls_score, labels)
-                    local_ctl_loss = criterion.ctl(local_feat_i, labels)[0]
-                    local_loss += local_pid_loss + local_ctl_loss
+                    # local_ctl_loss = criterion.ctl(local_feat_i, labels)[0]
+                    local_hcc_loss = criterion.hcc(local_feat_i, labels, "euc") + criterion.hcc(local_cls_score, labels, "kl")
+                    local_loss += local_pid_loss + local_hcc_loss
 
                 total_loss += local_loss + global_loss
                 meter.update(
