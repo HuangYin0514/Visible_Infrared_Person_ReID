@@ -140,7 +140,7 @@ def run(config):
                     local_bn_feat, local_cls_score = net.local_classifier_list[i](local_feat_i)
                     local_pid_loss = criterion.id(local_cls_score, labels)
                     local_ctl_loss = criterion.ctl(local_feat_i, labels)[0]
-                    local_loss += local_pid_loss + local_ctl_loss * 2.0
+                    local_loss += local_pid_loss + local_ctl_loss
 
                 total_loss += local_loss + global_loss
                 meter.update(
