@@ -142,7 +142,7 @@ def run(config):
                     local_pid_loss = criterion.id(local_cls_score, labels)
                     local_ctl_loss = criterion.ctl(local_feat_i, labels)[0]
                     # local_hcc_loss = criterion.hcc(local_feat_i, labels, "euc") + criterion.hcc(local_cls_score, labels, "kl")
-                    local_loss += local_pid_loss + local_ctl_loss
+                    local_loss += local_pid_loss + local_ctl_loss * 2
 
                 total_loss += local_loss + global_loss
                 meter.update(
