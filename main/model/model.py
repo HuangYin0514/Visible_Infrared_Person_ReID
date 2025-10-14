@@ -21,10 +21,7 @@ class ReIDNet(nn.Module):
         # ------------- Backbone -----------------------
         self.backbone = Backbone(BACKBONE_TYPE)
 
-        self.backbone_pooling = GeneralizedMeanPoolingP()
-        self.backbone_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
-
-        # ------------- Local -----------------------
+        # ------------- Partialization -----------------------
         self.local_conv_list = nn.ModuleList()
         num_stripes = 6
         for _ in range(num_stripes):
@@ -34,25 +31,16 @@ class ReIDNet(nn.Module):
             conv.apply(weights_init_kaiming)
             self.local_conv_list.append(nn.Sequential(conv, nn.BatchNorm2d(local_conv_out_channels), nn.ReLU(inplace=True)))
 
+        # ------------- Global -----------------------
+        self.global_classifier = Classifier(512 * num_stripes, n_class)
+        self.l2norm = Normalize(2)
+
+        # ------------- Local -----------------------
         self.local_classifier_list = nn.ModuleList()
         for _ in range(num_stripes):
             local_conv_out_channels = 512
             local_classifier_i = Classifier(local_conv_out_channels, n_class)
             self.local_classifier_list.append(local_classifier_i)
-        self.global_classifier = Classifier(512 * num_stripes, n_class)
-
-        # ------------- Interaction -----------------------
-        self.interaction = Interaction()
-        # self.interaction_pooling = GeneralizedMeanPoolingP()
-        # self.interaction_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
-
-        # ------------- Calibration -----------------------
-        self.calibration = Calibration()
-        self.calibration_pooling = GeneralizedMeanPoolingP()
-        self.calibration_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
-
-        # ------------- Propagation -----------------------
-        self.propagation = Propagation(T=4)
 
     def forward(self, x_vis, x_inf, modal):
         B, C, H, W = x_vis.shape
@@ -63,6 +51,7 @@ class ReIDNet(nn.Module):
         else:
             eval_features = []
 
+            # ------------- Partialization -----------------------
             num_stripes = 6
             stripe_h = int(18 / num_stripes)
             local_feat_list = []
@@ -75,12 +64,24 @@ class ReIDNet(nn.Module):
                 local_feat = self.local_conv_list[i](local_feat.view(B, 2048, 1, 1))
                 local_feat = local_feat.view(B, -1)
                 local_feat_list.append(local_feat)
+
+            # ------------- Global -----------------------
             global_feat = torch.cat(local_feat_list, dim=1)
-            global_bn_feat, global_cls_score = self.global_classifier(global_feat)
-            eval_features.append(global_bn_feat)
+            eval_features.append(self.l2norm(global_feat))
 
             eval_features = torch.cat(eval_features, dim=1)
             return eval_features
+
+
+class Normalize(nn.Module):
+    def __init__(self, power=2):
+        super(Normalize, self).__init__()
+        self.power = power
+
+    def forward(self, x):
+        norm = x.pow(self.power).sum(1, keepdim=True).pow(1.0 / self.power)
+        out = x.div(norm)
+        return out
 
 
 #############################################################

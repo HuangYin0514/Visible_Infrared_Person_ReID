@@ -112,6 +112,7 @@ def run(config):
 
                 backbone_feat_map = net(vis_imgs, inf_imgs, modal="all")
 
+                # ------------- Partialization -----------------------
                 num_stripes = 6
                 stripe_h = int(18 / num_stripes)
                 local_feat_list = []
@@ -124,7 +125,11 @@ def run(config):
                     local_feat = net.local_conv_list[i](local_feat.view(B, 2048, 1, 1))
                     local_feat = local_feat.view(B, -1)
                     local_feat_list.append(local_feat)
+
+                # ----------- Global ------------
                 global_feat = torch.cat(local_feat_list, dim=1)
+                global_ctl_loss = criterion.ctl(global_feat, labels)[0]
+                global_loss = global_ctl_loss
 
                 # ----------- Local ------------
                 local_loss = 0
@@ -132,17 +137,8 @@ def run(config):
                     local_feat_i = local_feat_list[i]
                     local_bn_feat, local_cls_score = net.local_classifier_list[i](local_feat_i)
                     local_pid_loss = criterion.id(local_cls_score, labels)
-                    local_hcc_euc_loss = criterion.hcc(local_feat_i, labels, "euc")
-                    local_hcc_kl_loss = criterion.hcc(local_cls_score, labels, "kl")
-                    local_loss += local_pid_loss + local_hcc_euc_loss + local_hcc_kl_loss
-
-                # ----------- Global ------------
-                global_bn_feat, global_cls_score = net.global_classifier(global_feat)
-                global_loss = 0
-                global_pid_loss = criterion.id(global_cls_score, labels)
-                global_hcc_euc_loss = criterion.hcc(global_feat, labels, "euc")
-                global_hcc_kl_loss = criterion.hcc(global_cls_score, labels, "kl")
-                global_loss += global_pid_loss + global_hcc_euc_loss + global_hcc_kl_loss
+                    local_ctl_loss = criterion.ctl(local_feat_i, labels)[0]
+                    local_loss += local_pid_loss + local_ctl_loss * 2.0
 
                 total_loss += local_loss + global_loss
                 meter.update(
