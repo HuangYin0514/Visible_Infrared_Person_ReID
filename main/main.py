@@ -120,8 +120,8 @@ def run(config):
                     # gm pool
                     local_feat = backbone_feat_map[:, :, i * stripe_h : (i + 1) * stripe_h, :]
                     local_feat = local_feat.view(B, 2048, -1)
-                    p = 10.0  # regDB: 10.0    SYSU: 3.0
-                    local_feat = (torch.mean(local_feat**p, dim=-1) + 1e-12) ** (1 / p)
+                    GM_PARA = config.MODEL.GM_PARA  # regDB: 10.0    SYSU: 3.0
+                    local_feat = (torch.mean(local_feat**GM_PARA, dim=-1) + 1e-12) ** (1 / GM_PARA)
                     local_feat = net.local_conv_list[i](local_feat.view(B, 2048, 1, 1))
                     local_feat = local_feat.view(B, -1)
                     local_feat_list.append(local_feat)

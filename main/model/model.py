@@ -17,9 +17,11 @@ class ReIDNet(nn.Module):
 
         BACKBONE_FEATURES_DIM = config.MODEL.BACKBONE_FEATURES_DIM
         BACKBONE_TYPE = config.MODEL.BACKBONE_TYPE
+        NON_LOCAL_FLAG = config.MODEL.NON_LOCAL_FLAG
 
         # ------------- Backbone -----------------------
-        self.backbone = Backbone(BACKBONE_TYPE)
+        NON_LOCAL_FLAG = config.MODEL.NON_LOCAL_FLAG
+        self.backbone = Backbone(BACKBONE_TYPE, NON_LOCAL_FLAG)
 
         # ------------- Partialization -----------------------
         self.local_conv_list = nn.ModuleList()
@@ -70,8 +72,8 @@ class ReIDNet(nn.Module):
                 # gm pool
                 local_feat = backbone_feat_map[:, :, i * stripe_h : (i + 1) * stripe_h, :]
                 local_feat = local_feat.view(B, 2048, -1)
-                p = 10.0  # regDB: 10.0    SYSU: 3.0
-                local_feat = (torch.mean(local_feat**p, dim=-1) + 1e-12) ** (1 / p)
+                GM_PARA = self.config.MODEL.GM_PARA  # regDB: 10.0    SYSU: 3.0
+                local_feat = (torch.mean(local_feat**GM_PARA, dim=-1) + 1e-12) ** (1 / GM_PARA)
                 local_feat = self.local_conv_list[i](local_feat.view(B, 2048, 1, 1))
                 local_feat = local_feat.view(B, -1)
                 local_feat_list.append(local_feat)
@@ -119,13 +121,14 @@ class Classifier(nn.Module):
 
 
 class Backbone(nn.Module):
-    def __init__(self, BACKBONE_TYPE):
+    def __init__(self, backbone_type, non_local_flag=True):
         super(Backbone, self).__init__()
-        # resnet = torchvision.models.resnet50(pretrained=True)
+        self.non_local_flag = non_local_flag
+
         resnet = None
-        if BACKBONE_TYPE == "resnet50":
+        if backbone_type == "resnet50":
             resnet = resnet50(pretrained=True)
-        elif BACKBONE_TYPE == "resnet50_ibn_a":
+        elif backbone_type == "resnet50_ibn_a":
             resnet = resnet50_ibn_a(pretrained=True)
 
         # Modifiy backbone
@@ -173,10 +176,12 @@ class Backbone(nn.Module):
             x = x_inf
 
         out = self.layer1(x)
-        # out = self._NL_forward_layer(out, self.layer2, self.NL_2)
-        # out = self._NL_forward_layer(out, self.layer3, self.NL_3)
-        out = self.layer2(out)
-        out = self.layer3(out)
+        if self.non_local_flag:
+            out = self._NL_forward_layer(out, self.layer2, self.NL_2)
+            out = self._NL_forward_layer(out, self.layer3, self.NL_3)
+        else:
+            out = self.layer2(out)
+            out = self.layer3(out)
         out = self.layer4(out)
 
         return out
