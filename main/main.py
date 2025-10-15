@@ -134,7 +134,7 @@ def run(config):
                 global_hcc_loss = criterion.hcc(global_feat, labels, "euc") + criterion.hcc(global_cls_score, labels, "kl")
                 global_loss = global_id_loss + global_hcc_loss
                 total_loss += global_loss
-                meter.update({"global_loss": global_loss.item()})
+                meter.update({"global_id_loss": global_id_loss.item(), "global_hcc_loss": global_hcc_loss.item()})
 
                 # ----------- Local ------------
                 local_loss = 0
@@ -143,26 +143,25 @@ def run(config):
                     local_bn_feat, local_cls_score = net.local_classifier_list[i](local_feat_i)
                     local_pid_loss = criterion.id(local_cls_score, labels)
                     local_ctl_loss = criterion.ctl(local_feat_i, labels)[0]
-                    # local_hcc_loss = criterion.hcc(local_feat_i, labels, "euc") + criterion.hcc(local_cls_score, labels, "kl")
                     local_loss += local_pid_loss + local_ctl_loss * 2
                 total_loss += local_loss
                 meter.update({"local_loss": local_loss.item()})
 
-                # ---- Interaction  ----
-                interactin_feat_map = net.interaction(backbone_feat_map)
+                # # ---- Interaction  ----
+                # interactin_feat_map = net.interaction(backbone_feat_map)
 
-                # ---- Calibration  ----
-                calibration_feat_map = net.calibration(interactin_feat_map, backbone_feat_map)
-                calibration_feat = net.calibration_pooling(calibration_feat_map).squeeze()
-                calibration_bn_feat, calibration_cls_score = net.calibration_classifier(calibration_feat)
-                calibration_pid_loss = criterion.id(calibration_cls_score, labels)
-                total_loss += calibration_pid_loss
-                meter.update({"calibration_pid_loss": calibration_pid_loss.item()})
+                # # ---- Calibration  ----
+                # calibration_feat_map = net.calibration(interactin_feat_map, backbone_feat_map)
+                # calibration_feat = net.calibration_pooling(calibration_feat_map).squeeze()
+                # calibration_bn_feat, calibration_cls_score = net.calibration_classifier(calibration_feat)
+                # calibration_pid_loss = criterion.id(calibration_cls_score, labels)
+                # total_loss += calibration_pid_loss
+                # meter.update({"calibration_pid_loss": calibration_pid_loss.item()})
 
-                # ---- Propagation  ----
-                modal_propagation_loss = net.propagation(student_logits=global_cls_score, teacher_logits=calibration_cls_score)
-                total_loss += 0.01 * modal_propagation_loss
-                meter.update({"modal_propagation_loss": modal_propagation_loss.item()})
+                # # ---- Propagation  ----
+                # modal_propagation_loss = net.propagation(student_logits=global_cls_score, teacher_logits=calibration_cls_score)
+                # total_loss += 0.01 * modal_propagation_loss
+                # meter.update({"modal_propagation_loss": modal_propagation_loss.item()})
 
                 # ----------- Backward ------------
                 optimizer.zero_grad()

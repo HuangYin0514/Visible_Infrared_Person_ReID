@@ -10,7 +10,7 @@ wandb login c74133df8c2cf575304acf8a99fe03ab74b6fe6a
 # python pre_process_sysu.py --data_path /kaggle/.../SYSU_MM01_concise111
 
 # --------------- SYSU_MM01 --------------------------------
-python main.py --config_file "config/method.yml" TASK.NOTES=V238 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.NON_LOCAL_FLAG=True MODEL.GM_PARA=3.0
+python main.py --config_file "config/method.yml" TASK.NOTES=V239 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.NON_LOCAL_FLAG=True MODEL.GM_PARA=3.0
 # python main.py --config_file "config/method.yml" TASK.NOTES=V106 TASK.NAME=B_IP OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_INTERACTION_FLAG=False MODEL.MODAL_CALIBRATION_FLAG=False MODEL.MODAL_PROPAGATION_FALG=True
 
 # --------------- reg_db --------------------------------
