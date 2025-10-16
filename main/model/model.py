@@ -17,11 +17,9 @@ class ReIDNet(nn.Module):
 
         BACKBONE_FEATURES_DIM = config.MODEL.BACKBONE_FEATURES_DIM
         BACKBONE_TYPE = config.MODEL.BACKBONE_TYPE
-        NON_LOCAL_FLAG = config.MODEL.NON_LOCAL_FLAG
 
         # ------------- Backbone -----------------------
-        NON_LOCAL_FLAG = config.MODEL.NON_LOCAL_FLAG
-        self.backbone = Backbone(BACKBONE_TYPE, NON_LOCAL_FLAG)
+        self.backbone = Backbone(BACKBONE_TYPE)
 
         # ------------- Partialization -----------------------
         self.local_conv_list = nn.ModuleList()
@@ -44,19 +42,9 @@ class ReIDNet(nn.Module):
             local_classifier_i = Classifier(local_conv_out_channels, n_class)
             self.local_classifier_list.append(local_classifier_i)
 
-        # ------------- Interaction -----------------------
-        self.interaction = Interaction()
-
-        # ------------- Calibration -----------------------
-        self.calibration = Calibration()
-        self.calibration_pooling = GeneralizedMeanPoolingP()
-        self.calibration_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
-
-        # ------------- Propagation -----------------------
-        self.propagation = Propagation(T=4)
-
     def forward(self, x_vis, x_inf, modal):
         B, C, H, W = x_vis.shape
+
         backbone_feat_map = self.backbone(x_vis, x_inf, modal)
 
         if self.training:
@@ -72,8 +60,8 @@ class ReIDNet(nn.Module):
                 # gm pool
                 local_feat = backbone_feat_map[:, :, i * stripe_h : (i + 1) * stripe_h, :]
                 local_feat = local_feat.view(B, 2048, -1)
-                GM_PARA = self.config.MODEL.GM_PARA  # regDB: 10.0    SYSU: 3.0
-                local_feat = (torch.mean(local_feat**GM_PARA, dim=-1) + 1e-12) ** (1 / GM_PARA)
+                p = 3.0  # regDB: 10.0    SYSU: 3.0
+                local_feat = (torch.mean(local_feat**p, dim=-1) + 1e-12) ** (1 / p)
                 local_feat = self.local_conv_list[i](local_feat.view(B, 2048, 1, 1))
                 local_feat = local_feat.view(B, -1)
                 local_feat_list.append(local_feat)
@@ -121,14 +109,13 @@ class Classifier(nn.Module):
 
 
 class Backbone(nn.Module):
-    def __init__(self, backbone_type, non_local_flag=True):
+    def __init__(self, BACKBONE_TYPE):
         super(Backbone, self).__init__()
-        self.non_local_flag = non_local_flag
-
+        # resnet = torchvision.models.resnet50(pretrained=True)
         resnet = None
-        if backbone_type == "resnet50":
+        if BACKBONE_TYPE == "resnet50":
             resnet = resnet50(pretrained=True)
-        elif backbone_type == "resnet50_ibn_a":
+        elif BACKBONE_TYPE == "resnet50_ibn_a":
             resnet = resnet50_ibn_a(pretrained=True)
 
         # Modifiy backbone
@@ -176,12 +163,8 @@ class Backbone(nn.Module):
             x = x_inf
 
         out = self.layer1(x)
-        if self.non_local_flag:
-            out = self._NL_forward_layer(out, self.layer2, self.NL_2)
-            out = self._NL_forward_layer(out, self.layer3, self.NL_3)
-        else:
-            out = self.layer2(out)
-            out = self.layer3(out)
+        out = self._NL_forward_layer(out, self.layer2, self.NL_2)
+        out = self._NL_forward_layer(out, self.layer3, self.NL_3)
         out = self.layer4(out)
 
         return out

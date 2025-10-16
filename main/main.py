@@ -120,8 +120,8 @@ def run(config):
                     # gm pool
                     local_feat = backbone_feat_map[:, :, i * stripe_h : (i + 1) * stripe_h, :]
                     local_feat = local_feat.view(B, 2048, -1)
-                    GM_PARA = config.MODEL.GM_PARA  # regDB: 10.0    SYSU: 3.0
-                    local_feat = (torch.mean(local_feat**GM_PARA, dim=-1) + 1e-12) ** (1 / GM_PARA)
+                    p = 3.0  # regDB: 10.0    SYSU: 3.0
+                    local_feat = (torch.mean(local_feat**p, dim=-1) + 1e-12) ** (1 / p)
                     local_feat = net.local_conv_list[i](local_feat.view(B, 2048, 1, 1))
                     local_feat = local_feat.view(B, -1)
                     local_feat_list.append(local_feat)
@@ -134,7 +134,7 @@ def run(config):
                 global_hcc_loss = criterion.hcc(global_feat, labels, "euc") + criterion.hcc(global_cls_score, labels, "kl")
                 global_loss = global_id_loss + global_hcc_loss
                 total_loss += global_loss
-                meter.update({"global_id_loss": global_id_loss.item(), "global_hcc_loss": global_hcc_loss.item()})
+                meter.update({"global_loss": global_loss.item()})
 
                 # ----------- Local ------------
                 local_loss = 0
@@ -144,26 +144,9 @@ def run(config):
                     local_pid_loss = criterion.id(local_cls_score, labels)
                     local_ctl_loss = criterion.ctl(local_feat_i, labels)[0]
                     local_loss += local_pid_loss + local_ctl_loss * 2
-                total_loss += local_loss * 0
+                total_loss += local_loss
                 meter.update({"local_loss": local_loss.item()})
 
-                # # ---- Interaction  ----
-                # interactin_feat_map = net.interaction(backbone_feat_map)
-
-                # # ---- Calibration  ----
-                # calibration_feat_map = net.calibration(interactin_feat_map, backbone_feat_map)
-                # calibration_feat = net.calibration_pooling(calibration_feat_map).squeeze()
-                # calibration_bn_feat, calibration_cls_score = net.calibration_classifier(calibration_feat)
-                # calibration_pid_loss = criterion.id(calibration_cls_score, labels)
-                # total_loss += calibration_pid_loss
-                # meter.update({"calibration_pid_loss": calibration_pid_loss.item()})
-
-                # # ---- Propagation  ----
-                # modal_propagation_loss = net.propagation(student_logits=global_cls_score, teacher_logits=calibration_cls_score)
-                # total_loss += 0.01 * modal_propagation_loss
-                # meter.update({"modal_propagation_loss": modal_propagation_loss.item()})
-
-                # ----------- Backward ------------
                 optimizer.zero_grad()
                 total_loss.backward()
                 optimizer.step()
@@ -176,9 +159,9 @@ def run(config):
         #########
         if epoch % config.TEST.EVAL_EPOCH == 0:
             net.eval()
-            feat_dim = 512 * 6  # 2048
-            query_feat = np.zeros((data_loder.N_query, feat_dim))
-            gall_feat = np.zeros((data_loder.N_gallery, feat_dim))
+
+            query_feat = np.zeros((data_loder.N_query, 512 * 6))
+            gall_feat = np.zeros((data_loder.N_gallery, 512 * 6))
             loaders = [data_loder.query_loader, data_loder.gallery_loader]
             print(util.time_now(), "Start extracting features...")
             with torch.no_grad():
