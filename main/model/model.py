@@ -22,18 +22,23 @@ class ReIDNet(nn.Module):
         self.backbone = Backbone(BACKBONE_TYPE)
 
         # ------------- Partialization -----------------------
+        self.local_pool_list = nn.ModuleList()
         self.local_conv_list = nn.ModuleList()
         num_stripes = 6
         for _ in range(num_stripes):
             pool_dim = 2048
             local_conv_out_channels = 512
-            conv = nn.Conv2d(pool_dim, local_conv_out_channels, 1)
-            conv.apply(weights_init_kaiming)
-            self.local_conv_list.append(nn.Sequential(conv, nn.BatchNorm2d(local_conv_out_channels), nn.ReLU(inplace=True)))
+            pool_i = GeneralizedMeanPoolingP()
+            conv_i = nn.Sequential(
+                nn.Conv2d(pool_dim, local_conv_out_channels, 1),
+                nn.BatchNorm2d(local_conv_out_channels),
+                nn.ReLU(inplace=True),
+            )
+            self.local_pool_list.append(pool_i)
+            self.local_conv_list.append(conv_i)
 
         # ------------- Global -----------------------
         self.global_classifier = Classifier(512 * num_stripes, n_class)
-        self.l2norm = Normalize(2)
 
         # ------------- Local -----------------------
         self.local_classifier_list = nn.ModuleList()
@@ -50,42 +55,28 @@ class ReIDNet(nn.Module):
         if self.training:
             return backbone_feat_map
         else:
-            eval_features = []
+            eval_feats = []
 
             # ------------- Partialization -----------------------
-            num_stripes = 6
-            stripe_h = int(18 / num_stripes)
+            STRIPE_NUM = 6
+            local_feat_map_list = torch.chunk(backbone_feat_map, STRIPE_NUM, dim=2)
             local_feat_list = []
-            for i in range(num_stripes):
-                # gm pool
-                local_feat = backbone_feat_map[:, :, i * stripe_h : (i + 1) * stripe_h, :]
-                local_feat = local_feat.view(B, 2048, -1)
-                p = 3.0  # regDB: 10.0    SYSU: 3.0
-                local_feat = (torch.mean(local_feat**p, dim=-1) + 1e-12) ** (1 / p)
-                local_feat = self.local_conv_list[i](local_feat.view(B, 2048, 1, 1))
-                local_feat = local_feat.view(B, -1)
-                local_feat_list.append(local_feat)
+            for i in range(STRIPE_NUM):
+                local_feat_map_i = local_feat_map_list[i]
+                local_feat_i = self.local_pool_list[i](local_feat_map_i)  # (B, 2048, 1, 1)
+                local_feat_i = self.local_conv_list[i](local_feat_i).view(B, -1)
+                local_feat_list.append(local_feat_i)
 
             # ------------- Global -----------------------
             global_feat = torch.cat(local_feat_list, dim=1)
-            eval_features.append(self.l2norm(global_feat))
+            global_bn_feat, global_cls_score = self.global_classifier(global_feat)
+            eval_feats.append(global_bn_feat)
 
-            eval_features = torch.cat(eval_features, dim=1)
-            return eval_features
+            eval_feats = torch.cat(eval_feats, dim=1)
+            return eval_feats
 
 
 #############################################################
-class Normalize(nn.Module):
-    def __init__(self, power=2):
-        super(Normalize, self).__init__()
-        self.power = power
-
-    def forward(self, x):
-        norm = x.pow(self.power).sum(1, keepdim=True).pow(1.0 / self.power)
-        out = x.div(norm)
-        return out
-
-
 class Classifier(nn.Module):
     """
     BN -> Classifier

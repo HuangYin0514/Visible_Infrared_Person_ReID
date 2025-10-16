@@ -113,18 +113,14 @@ def run(config):
                 backbone_feat_map = net(vis_imgs, inf_imgs, modal="all")
 
                 # ------------- Partialization -----------------------
-                num_stripes = 6
-                stripe_h = int(18 / num_stripes)
+                STRIPE_NUM = 6
+                local_feat_map_list = torch.chunk(backbone_feat_map, STRIPE_NUM, dim=2)
                 local_feat_list = []
-                for i in range(num_stripes):
-                    # gm pool
-                    local_feat = backbone_feat_map[:, :, i * stripe_h : (i + 1) * stripe_h, :]
-                    local_feat = local_feat.view(B, 2048, -1)
-                    p = 3.0  # regDB: 10.0    SYSU: 3.0
-                    local_feat = (torch.mean(local_feat**p, dim=-1) + 1e-12) ** (1 / p)
-                    local_feat = net.local_conv_list[i](local_feat.view(B, 2048, 1, 1))
-                    local_feat = local_feat.view(B, -1)
-                    local_feat_list.append(local_feat)
+                for i in range(STRIPE_NUM):
+                    local_feat_map_i = local_feat_map_list[i]
+                    local_feat_i = net.local_pool_list[i](local_feat_map_i)  # (B, 2048, 1, 1)
+                    local_feat_i = net.local_conv_list[i](local_feat_i).view(B, -1)
+                    local_feat_list.append(local_feat_i)
 
                 # ----------- Global ------------
                 global_feat = torch.cat(local_feat_list, dim=1)
@@ -138,7 +134,7 @@ def run(config):
 
                 # ----------- Local ------------
                 local_loss = 0
-                for i in range(num_stripes):
+                for i in range(STRIPE_NUM):
                     local_feat_i = local_feat_list[i]
                     local_bn_feat, local_cls_score = net.local_classifier_list[i](local_feat_i)
                     local_pid_loss = criterion.id(local_cls_score, labels)
