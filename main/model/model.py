@@ -22,8 +22,35 @@ class ReIDNet(nn.Module):
         self.backbone = Backbone(BACKBONE_TYPE, non_local_flag=config.MODEL.NON_LOCAL_FLAG)
 
         # ------------- Global -----------------------
-        self.global_pool = GeneralizedMeanPoolingP()
-        self.global_classifier = Classifier(2048, n_class)
+        if config.DATASET.TRAIN_DATASET == "sysu_mm01":
+            self.global_pool = GeneralizedMeanPoolingP()
+            self.global_classifier = Classifier(2048, n_class)
+        elif config.DATASET.TRAIN_DATASET == "reg_db":
+
+            # ------------- Partialization -----------------------
+            self.local_pool_list = nn.ModuleList()
+            self.local_conv_list = nn.ModuleList()
+            STRIPE_NUM = 6
+            pool_dim = 2048
+            local_conv_out_channels = 512
+            for _ in range(STRIPE_NUM):
+                pool_i = GeneralizedMeanPoolingP()
+                conv_i = nn.Sequential(
+                    nn.Conv2d(pool_dim, local_conv_out_channels, 1),
+                    nn.BatchNorm2d(local_conv_out_channels),
+                    nn.ReLU(inplace=True),
+                )
+                self.local_pool_list.append(pool_i)
+                self.local_conv_list.append(conv_i)
+
+            # ------------- Global -----------------------
+            self.global_classifier = Classifier(STRIPE_NUM * local_conv_out_channels, n_class)
+
+            # ------------- Local -----------------------
+            self.local_classifier_list = nn.ModuleList()
+            for _ in range(STRIPE_NUM):
+                local_classifier_i = Classifier(local_conv_out_channels, n_class)
+                self.local_classifier_list.append(local_classifier_i)
 
         # ------------- Interaction -----------------------
         self.interaction = Interaction()
@@ -45,11 +72,26 @@ class ReIDNet(nn.Module):
             return backbone_feat_map
         else:
             eval_feats = []
+            if self.config.DATASET.TRAIN_DATASET == "sysu_mm01":
+                # ------------- Global -----------------------
+                global_feat = self.global_pool(backbone_feat_map).view(B, 2048)  # (B, 2048)
+                global_bn_feat, global_cls_score = self.global_classifier(global_feat)
+                eval_feats.append(global_bn_feat)
+            elif self.config.DATASET.TRAIN_DATASET == "reg_db":
+                # ------------- Partialization -----------------------
+                STRIPE_NUM = 6
+                local_feat_map_list = torch.chunk(backbone_feat_map, STRIPE_NUM, dim=2)
+                local_feat_list = []
+                for i in range(STRIPE_NUM):
+                    local_feat_map_i = local_feat_map_list[i]
+                    local_feat_i = self.local_pool_list[i](local_feat_map_i)  # (B, 2048, 1, 1)
+                    local_feat_i = self.local_conv_list[i](local_feat_i).view(B, -1)
+                    local_feat_list.append(local_feat_i)
 
-            # ------------- Global -----------------------
-            global_feat = self.global_pool(backbone_feat_map).view(B, 2048)  # (B, 2048)
-            global_bn_feat, global_cls_score = self.global_classifier(global_feat)
-            eval_feats.append(global_bn_feat)
+                # ----------- Global ------------
+                global_feat = torch.cat(local_feat_list, dim=1)
+                global_bn_feat, global_cls_score = self.global_classifier(global_feat)
+                eval_feats.append(global_bn_feat)
 
             eval_feats = torch.cat(eval_feats, dim=1)
             return eval_feats
