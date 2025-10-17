@@ -25,28 +25,16 @@ class ReIDNet(nn.Module):
         self.global_pool = GeneralizedMeanPoolingP()
         self.global_classifier = Classifier(2048, n_class)
 
-        # ------------- Partialization -----------------------
-        self.local_pool_list = nn.ModuleList()
-        self.local_conv_list = nn.ModuleList()
-        num_stripes = 6
-        for _ in range(num_stripes):
-            pool_dim = 2048
-            local_conv_out_channels = 512
-            pool_i = GeneralizedMeanPoolingP()
-            conv_i = nn.Sequential(
-                nn.Conv2d(pool_dim, local_conv_out_channels, 1),
-                nn.BatchNorm2d(local_conv_out_channels),
-                nn.ReLU(inplace=True),
-            )
-            self.local_pool_list.append(pool_i)
-            self.local_conv_list.append(conv_i)
+        # ------------- Interaction -----------------------
+        self.interaction = Interaction()
 
-        # ------------- Local -----------------------
-        self.local_classifier_list = nn.ModuleList()
-        for _ in range(num_stripes):
-            local_conv_out_channels = 512
-            local_classifier_i = Classifier(local_conv_out_channels, n_class)
-            self.local_classifier_list.append(local_classifier_i)
+        # ------------- Calibration -----------------------
+        self.calibration = Calibration()
+        self.calibration_pooling = GeneralizedMeanPoolingP()
+        self.calibration_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
+
+        # ------------- Propagation -----------------------
+        self.propagation = Propagation(T=4)
 
     def forward(self, x_vis, x_inf, modal):
         B, C, H, W = x_vis.shape
