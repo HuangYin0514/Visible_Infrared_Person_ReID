@@ -19,7 +19,11 @@ class ReIDNet(nn.Module):
         BACKBONE_TYPE = config.MODEL.BACKBONE_TYPE
 
         # ------------- Backbone -----------------------
-        self.backbone = Backbone(BACKBONE_TYPE)
+        self.backbone = Backbone(BACKBONE_TYPE, non_local_flag=config.MODEL.NON_LOCAL_FLAG)
+
+        # ------------- Global -----------------------
+        self.global_pool = GeneralizedMeanPoolingP()
+        self.global_classifier = Classifier(2048, n_class)
 
         # ------------- Partialization -----------------------
         self.local_pool_list = nn.ModuleList()
@@ -36,9 +40,6 @@ class ReIDNet(nn.Module):
             )
             self.local_pool_list.append(pool_i)
             self.local_conv_list.append(conv_i)
-
-        # ------------- Global -----------------------
-        self.global_classifier = Classifier(512 * num_stripes, n_class)
 
         # ------------- Local -----------------------
         self.local_classifier_list = nn.ModuleList()
@@ -57,18 +58,8 @@ class ReIDNet(nn.Module):
         else:
             eval_feats = []
 
-            # ------------- Partialization -----------------------
-            STRIPE_NUM = 6
-            local_feat_map_list = torch.chunk(backbone_feat_map, STRIPE_NUM, dim=2)
-            local_feat_list = []
-            for i in range(STRIPE_NUM):
-                local_feat_map_i = local_feat_map_list[i]
-                local_feat_i = self.local_pool_list[i](local_feat_map_i)  # (B, 2048, 1, 1)
-                local_feat_i = self.local_conv_list[i](local_feat_i).view(B, -1)
-                local_feat_list.append(local_feat_i)
-
             # ------------- Global -----------------------
-            global_feat = torch.cat(local_feat_list, dim=1)
+            global_feat = self.global_pool(backbone_feat_map).view(B, 2048)  # (B, 2048)
             global_bn_feat, global_cls_score = self.global_classifier(global_feat)
             eval_feats.append(global_bn_feat)
 
@@ -100,13 +91,14 @@ class Classifier(nn.Module):
 
 
 class Backbone(nn.Module):
-    def __init__(self, BACKBONE_TYPE):
+    def __init__(self, backbone_type, non_local_flag):
         super(Backbone, self).__init__()
-        # resnet = torchvision.models.resnet50(pretrained=True)
+        self.non_local_flag = non_local_flag
+
         resnet = None
-        if BACKBONE_TYPE == "resnet50":
+        if backbone_type == "resnet50":
             resnet = resnet50(pretrained=True)
-        elif BACKBONE_TYPE == "resnet50_ibn_a":
+        elif backbone_type == "resnet50_ibn_a":
             resnet = resnet50_ibn_a(pretrained=True)
 
         # Modifiy backbone
@@ -154,8 +146,12 @@ class Backbone(nn.Module):
             x = x_inf
 
         out = self.layer1(x)
-        out = self._NL_forward_layer(out, self.layer2, self.NL_2)
-        out = self._NL_forward_layer(out, self.layer3, self.NL_3)
+        if self.non_local_flag:
+            out = self._NL_forward_layer(out, self.layer2, self.NL_2)
+            out = self._NL_forward_layer(out, self.layer3, self.NL_3)
+        else:
+            out = self.layer2(out)
+            out = self.layer3(out)
         out = self.layer4(out)
 
         return out
