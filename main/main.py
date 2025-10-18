@@ -165,7 +165,7 @@ def run(config):
 
                 # ---- Propagation  ----
                 modal_propagation_loss = net.propagation(student_logits=global_cls_score, teacher_logits=calibration_cls_score)
-                total_loss += 0.01 * modal_propagation_loss
+                total_loss += config.MODEL.MODAL_PROPAGATION_WEIGHT * modal_propagation_loss
                 meter.update({"modal_propagation_loss": modal_propagation_loss.item()})
 
                 optimizer.zero_grad()
