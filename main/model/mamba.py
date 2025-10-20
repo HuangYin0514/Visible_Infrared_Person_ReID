@@ -38,12 +38,15 @@ class CS_MAMBA(nn.Module):
         super(CS_MAMBA, self).__init__()
 
         # Mamba
-        self.norm_1 = nn.LayerNorm(in_cdim * 2)
-        self.vi_featmap_2_patch = Featmap_2_Patch()
-        self.mamba = Mamba(in_cdim=in_cdim * 2, d_model=d_model)
-        self.vi_patch_2_featmap = Patch_2_Featmap()
-        self.norm_2 = nn.LayerNorm(in_cdim * 2)
+        self.norm_1 = nn.LayerNorm(in_cdim)
+        self.vis_featmap_2_patch = Featmap_2_Patch()
+        self.inf_featmap_2_patch = Featmap_2_Patch()
+        self.mamba = Mamba(in_cdim=in_cdim, d_model=d_model)
+        self.vis_patch_2_featmap = Patch_2_Featmap()
+        self.inf_patch_2_featmap = Patch_2_Featmap()
+        self.norm_2 = nn.LayerNorm(in_cdim)
 
+        self.attention_pool = nn.AdaptiveAvgPool2d((POOL_HEGHT, POOL_WIDTH))
         self.attention = nn.Sequential(
             nn.Linear(POOL_HEGHT * POOL_WIDTH, POOL_HEGHT * POOL_WIDTH, bias=False),
             nn.ReLU(inplace=True),
@@ -62,17 +65,22 @@ class CS_MAMBA(nn.Module):
     def forward(self, vis_feat_map, inf_feat_map):
         B, C, H, W = vis_feat_map.shape
 
-        vi_feat_map = torch.stack((vis_feat_map, inf_feat_map), dim=2)  # [B, C, 2, H, W]
-        vi_feat_map = rearrange(vi_feat_map, "B C D H W -> B (C D) H W")  # [B, 2C, H, W]
+        vis_feat_patch = self.vis_featmap_2_patch(vis_feat_map)  # [B, C, n_patch]
+        inf_feat_patch = self.inf_featmap_2_patch(inf_feat_map)  # [B, C, n_patch]
+
+        vi_feat_patch = torch.stack((vis_feat_patch, inf_feat_patch), dim=3)  # [B, C, n_patch, 2]
+        vi_feat_patch = rearrange(vi_feat_patch, "B C N D -> B C (N D)")  # [B, C, 2n_patch]
 
         # ---- Mamba ----
-        vi_feat_patch = self.vi_featmap_2_patch(vi_feat_map)  # [B, 2C, n_patch]
-        vi_feat_patch = rearrange(vi_feat_patch, "B D L -> B L D")  # [B, n_patch, 2C]
-        vi_feat_patch = self.mamba(self.norm_1(vi_feat_patch)) + vi_feat_patch  # [B, n_patch, 2C]
+        vi_feat_patch = rearrange(vi_feat_patch, "B D L -> B L D")  # [B, 2n_patch, C]
+        vi_feat_patch = self.mamba(self.norm_1(vi_feat_patch)) + vi_feat_patch  # [B, 2n_patch, C]
         vi_feat_patch = self.norm_2(vi_feat_patch)
-        vi_feat_patch = rearrange(vi_feat_patch, "B L D -> B D L")  # [B, 2C, n_patch]
+        vi_feat_patch = rearrange(vi_feat_patch, "B L D -> B D L")  # [B, C, 2n_patch]
 
         # --- Attention ---
+        vi_feat_patch = torch.stack((vi_feat_patch[:, :, 0::2], vi_feat_patch[:, :, 1::2]), dim=2)  # [B, C, 2, n_patch]
+        vi_feat_patch = rearrange(vi_feat_patch, "B C D N -> B (C D) N")  # [B, 2C, n_patch]
+
         vi_attention = self.attention(vi_feat_patch)  # [B, 2C, 1]
         # vis_attention, inf_attention = vi_attention.split(split_size=[C, C], dim=1)
         vis_attention, inf_attention = vi_attention[:, 0::2, :], vi_attention[:, 1::2, :]
