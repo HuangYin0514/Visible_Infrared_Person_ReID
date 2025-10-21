@@ -79,15 +79,12 @@ class CS_MAMBA(nn.Module):
 
         # --- Attention ---
         vi_feat_patch = torch.stack((vi_feat_patch[:, :, 0::2], vi_feat_patch[:, :, 1::2]), dim=2)  # [B, C, 2, n_patch]
-        vi_feat_patch = vi_feat_patch.view(B, 2 * C, -1)  # [B, 2C, n_patch]
-
-        vi_attention = self.attention(vi_feat_patch)  # [B, 2C, 1]
-        # vis_attention, inf_attention = vi_attention.split(split_size=[C, C], dim=1)
-        vis_attention, inf_attention = vi_attention[:, 0::2, :], vi_attention[:, 1::2, :]
+        vi_attention = self.attention(vi_feat_patch).view(B, C, 2)  # [B, C, 2]
+        vis_attention, inf_attention = vi_attention[..., 0].view(B, C, 1, 1), vi_attention[..., 1:].view(B, C, 1, 1)
 
         # ---- FFN ----
-        out_vis = self.ffn_vis(vis_attention.unsqueeze(3) * vis_feat_map)
-        out_inf = self.ffn_inf(inf_attention.unsqueeze(3) * inf_feat_map)
+        out_vis = self.ffn_vis(vis_attention * vis_feat_map)
+        out_inf = self.ffn_inf(inf_attention * inf_feat_map)
         return out_vis, out_inf
 
 
