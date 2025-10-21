@@ -66,10 +66,10 @@ class CS_MAMBA(nn.Module):
         B, C, H, W = vis_feat_map.shape
 
         vis_feat_patch = self.vis_featmap_2_patch(vis_feat_map)  # [B, C, n_patch]
-        inf_feat_patch = self.inf_featmap_2_patch(inf_feat_map)  # [B, C, n_patch]
+        inf_feat_patch = self.vis_featmap_2_patch(inf_feat_map)  # [B, C, n_patch]
 
         vi_feat_patch = torch.stack((vis_feat_patch, inf_feat_patch), dim=3)  # [B, C, n_patch, 2]
-        vi_feat_patch = rearrange(vi_feat_patch, "B C N D -> B C (N D)")  # [B, C, 2n_patch]
+        vi_feat_patch = vi_feat_patch.view(B, C, -1)  # [B, C, 2n_patch]
 
         # ---- Mamba ----
         vi_feat_patch = rearrange(vi_feat_patch, "B D L -> B L D")  # [B, 2n_patch, C]
@@ -79,7 +79,7 @@ class CS_MAMBA(nn.Module):
 
         # --- Attention ---
         vi_feat_patch = torch.stack((vi_feat_patch[:, :, 0::2], vi_feat_patch[:, :, 1::2]), dim=2)  # [B, C, 2, n_patch]
-        vi_feat_patch = rearrange(vi_feat_patch, "B C D N -> B (C D) N")  # [B, 2C, n_patch]
+        vi_feat_patch = vi_feat_patch.view(B, 2 * C, -1)  # [B, 2C, n_patch]
 
         vi_attention = self.attention(vi_feat_patch)  # [B, 2C, 1]
         # vis_attention, inf_attention = vi_attention.split(split_size=[C, C], dim=1)
