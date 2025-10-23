@@ -11,6 +11,35 @@ POOL_HEGHT = 6
 POOL_WIDTH = 1
 
 
+class ChannelAttention(nn.Module):
+    """
+    CBAM混合注意力机制的通道注意力
+    """
+
+    def __init__(self, in_channels, ratio=16):
+        super(ChannelAttention, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.max_pool = nn.AdaptiveMaxPool2d(1)
+        self.fc = nn.Sequential(
+            # 全连接层
+            # nn.Linear(in_planes, in_planes // ratio, bias=False),
+            # nn.ReLU(),
+            # nn.Linear(in_planes // ratio, in_planes, bias=False)
+            # 利用1x1卷积代替全连接，避免输入必须尺度固定的问题，并减小计算量
+            nn.Conv2d(in_channels, in_channels // ratio, 1, bias=False),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels // ratio, in_channels, 1, bias=False),
+        )
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        avg_out = self.fc(self.avg_pool(x))
+        max_out = self.fc(self.max_pool(x))
+        out = avg_out + max_out
+        out = self.sigmoid(out)
+        return out
+
+
 class Featmap_2_Patch(nn.Module):
     def __init__(self):
         super(Featmap_2_Patch, self).__init__()
@@ -46,13 +75,14 @@ class CS_MAMBA(nn.Module):
         self.inf_patch_2_featmap = Patch_2_Featmap()
         self.norm_2 = nn.LayerNorm(in_cdim)
 
-        self.attention_pool = nn.AdaptiveAvgPool2d((POOL_HEGHT, POOL_WIDTH))
-        self.attention = nn.Sequential(
-            nn.Linear(POOL_HEGHT * POOL_WIDTH * 2, POOL_HEGHT * POOL_WIDTH * 2, bias=False),
-            nn.ReLU(inplace=True),
-            nn.Linear(POOL_HEGHT * POOL_WIDTH * 2, 2, bias=False),
-            nn.Sigmoid(),
-        )
+        # self.attention_pool = nn.AdaptiveAvgPool2d((POOL_HEGHT, POOL_WIDTH))
+        # self.attention = nn.Sequential(
+        #     nn.Linear(POOL_HEGHT * POOL_WIDTH * 2, POOL_HEGHT * POOL_WIDTH * 2, bias=False),
+        #     nn.ReLU(inplace=True),
+        #     nn.Linear(POOL_HEGHT * POOL_WIDTH * 2, 2, bias=False),
+        #     nn.Sigmoid(),
+        # )
+        self.attention = ChannelAttention(in_channels=in_cdim)
 
         # FFN
         self.ffn_vis = nn.Sequential(
@@ -78,9 +108,14 @@ class CS_MAMBA(nn.Module):
         vi_feat_patch = rearrange(vi_feat_patch, "B L D -> B D L")  # [B, C, 2n_patch]
 
         # --- Attention ---
-        # vi_feat_patch = torch.stack((vi_feat_patch[:, :, 0::2], vi_feat_patch[:, :, 1::2]), dim=2)  # [B, C, 2, n_patch]
-        vi_attention = self.attention(vi_feat_patch).view(B, C, 2)  # [B, C, 2]
-        vis_attention, inf_attention = vi_attention[..., 0].view(B, C, 1, 1), vi_attention[..., 1].view(B, C, 1, 1)
+        vis_feat_patch = vi_feat_patch[:, :, 0::2]  # [B, C, n_patch]
+        inf_feat_patch = vi_feat_patch[:, :, 1::2]
+        vis_attention = self.attention(vis_feat_patch.view(B, C, -1, 1)).view(B, C, 1, 1)
+        inf_attention = self.attention(inf_feat_patch.view(B, C, -1, 1)).view(B, C, 1, 1)
+
+        # # vi_feat_patch = torch.stack((vi_feat_patch[:, :, 0::2], vi_feat_patch[:, :, 1::2]), dim=2)  # [B, C, 2, n_patch]
+        # vi_attention = self.attention(vi_feat_patch).view(B, C, 2)  # [B, C, 2]
+        # vis_attention, inf_attention = vi_attention[..., 0].view(B, C, 1, 1), vi_attention[..., 1].view(B, C, 1, 1)
 
         # ---- FFN ----
         out_vis = self.ffn_vis(vis_attention * vis_feat_map)
