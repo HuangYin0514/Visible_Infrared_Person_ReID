@@ -21,12 +21,8 @@ class ChannelAttention(nn.Module):
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
         self.fc = nn.Sequential(
-            # 全连接层
-            # nn.Linear(in_planes, in_planes // ratio, bias=False),
-            # nn.ReLU(),
-            # nn.Linear(in_planes // ratio, in_planes, bias=False)
-            # 利用1x1卷积代替全连接，避免输入必须尺度固定的问题，并减小计算量
             nn.Conv2d(in_channels, in_channels // ratio, 1, bias=False),
+            nn.BatchNorm2d(in_channels // ratio),
             nn.ReLU(inplace=True),
             nn.Conv2d(in_channels // ratio, in_channels, 1, bias=False),
         )
@@ -99,8 +95,8 @@ class CS_MAMBA(nn.Module):
         vi_feat_patch = rearrange(vi_feat_patch, "B L D -> B D L")  # [B, C, 2n_patch]
 
         # --- Attention ---
-        vis_feat_patch = vi_feat_patch[:, :, 0::2] + vis_feat_patch  # [B, C, n_patch]
-        inf_feat_patch = vi_feat_patch[:, :, 1::2] + inf_feat_patch
+        vis_feat_patch = vi_feat_patch[:, :, 0::2]  # [B, C, n_patch]
+        inf_feat_patch = vi_feat_patch[:, :, 1::2]
         vis_attention = self.attention(vis_feat_patch.view(B, C, -1, 1)).view(B, C, 1, 1)
         inf_attention = self.attention(inf_feat_patch.view(B, C, -1, 1)).view(B, C, 1, 1)
 
