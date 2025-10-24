@@ -68,20 +68,11 @@ class CS_MAMBA(nn.Module):
 
         # Mamba
         self.norm_1 = nn.LayerNorm(in_cdim)
-        self.vis_featmap_2_patch = Featmap_2_Patch()
-        self.inf_featmap_2_patch = Featmap_2_Patch()
+        self.featmap_2_patch = Featmap_2_Patch()
         self.mamba = Mamba(in_cdim=in_cdim, d_model=d_model)
-        self.vis_patch_2_featmap = Patch_2_Featmap()
-        self.inf_patch_2_featmap = Patch_2_Featmap()
+        self.patch_2_featmap = Patch_2_Featmap()
         self.norm_2 = nn.LayerNorm(in_cdim)
 
-        # self.attention_pool = nn.AdaptiveAvgPool2d((POOL_HEGHT, POOL_WIDTH))
-        # self.attention = nn.Sequential(
-        #     nn.Linear(POOL_HEGHT * POOL_WIDTH * 2, POOL_HEGHT * POOL_WIDTH * 2, bias=False),
-        #     nn.ReLU(inplace=True),
-        #     nn.Linear(POOL_HEGHT * POOL_WIDTH * 2, 2, bias=False),
-        #     nn.Sigmoid(),
-        # )
         self.attention = ChannelAttention(in_channels=in_cdim)
 
         # FFN
@@ -95,8 +86,8 @@ class CS_MAMBA(nn.Module):
     def forward(self, vis_feat_map, inf_feat_map):
         B, C, H, W = vis_feat_map.shape
 
-        vis_feat_patch = self.vis_featmap_2_patch(vis_feat_map)  # [B, C, n_patch]
-        inf_feat_patch = self.vis_featmap_2_patch(inf_feat_map)  # [B, C, n_patch]
+        vis_feat_patch = self.featmap_2_patch(vis_feat_map)  # [B, C, n_patch]
+        inf_feat_patch = self.featmap_2_patch(inf_feat_map)  # [B, C, n_patch]
 
         vi_feat_patch = torch.stack((vis_feat_patch, inf_feat_patch), dim=3)  # [B, C, n_patch, 2]
         vi_feat_patch = vi_feat_patch.view(B, C, -1)  # [B, C, 2n_patch]
@@ -108,14 +99,10 @@ class CS_MAMBA(nn.Module):
         vi_feat_patch = rearrange(vi_feat_patch, "B L D -> B D L")  # [B, C, 2n_patch]
 
         # --- Attention ---
-        vis_feat_patch = vi_feat_patch[:, :, 0::2]  # [B, C, n_patch]
-        inf_feat_patch = vi_feat_patch[:, :, 1::2]
+        vis_feat_patch = vi_feat_patch[:, :, 0::2] + vis_feat_patch  # [B, C, n_patch]
+        inf_feat_patch = vi_feat_patch[:, :, 1::2] + inf_feat_patch
         vis_attention = self.attention(vis_feat_patch.view(B, C, -1, 1)).view(B, C, 1, 1)
         inf_attention = self.attention(inf_feat_patch.view(B, C, -1, 1)).view(B, C, 1, 1)
-
-        # # vi_feat_patch = torch.stack((vi_feat_patch[:, :, 0::2], vi_feat_patch[:, :, 1::2]), dim=2)  # [B, C, 2, n_patch]
-        # vi_attention = self.attention(vi_feat_patch).view(B, C, 2)  # [B, C, 2]
-        # vis_attention, inf_attention = vi_attention[..., 0].view(B, C, 1, 1), vi_attention[..., 1].view(B, C, 1, 1)
 
         # ---- FFN ----
         out_vis = self.ffn_vis(vis_attention * vis_feat_map)
