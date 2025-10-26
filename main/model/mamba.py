@@ -90,10 +90,7 @@ class CS_MAMBA(nn.Module):
 
         # ---- Mamba ----
         vi_feat_patch = rearrange(vi_feat_patch, "B D L -> B L D")  # [B, 2n_patch, C]
-        # vi_feat_patch = self.mamba(self.norm_1(vi_feat_patch)) + vi_feat_patch  # [B, 2n_patch, C]
-        vi_feat_patch_forward = self.mamba(self.norm_1(vi_feat_patch))  # [B, 2n_patch, C]
-        vi_feat_patch_backward = self.mamba(self.norm_1(vi_feat_patch.flip([1])))  # [B, 2n_patch, C]
-        vi_feat_patch = (vi_feat_patch_forward + vi_feat_patch_backward.flip([1])) / 2 + vi_feat_patch
+        vi_feat_patch = self.mamba(self.norm_1(vi_feat_patch)) + vi_feat_patch  # [B, 2n_patch, C]
         vi_feat_patch = self.norm_2(vi_feat_patch)
         vi_feat_patch = rearrange(vi_feat_patch, "B L D -> B D L")  # [B, C, 2n_patch]
 
@@ -137,6 +134,10 @@ class Mamba(nn.Module):
         x = rearrange(x, "B D L -> B L D")
         x = F.silu(x)  # [B, L, D]
         y = self.ssm(x)  # [B, L, D]
+
+        y_backward = self.ssm(torch.flip(x, dims=[1]))  # [B, L, D]
+        y = (y + torch.flip(y_backward, dims=[1])) / 2  # [B, L, D]
+
         out = self.out_proj(y)  # [B, L, in_cdim]
         return out
 
