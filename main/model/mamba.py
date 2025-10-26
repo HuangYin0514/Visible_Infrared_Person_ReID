@@ -31,7 +31,8 @@ class ChannelAttention(nn.Module):
     def forward(self, x):
         avg_out = self.fc(self.avg_pool(x))
         max_out = self.fc(self.max_pool(x))
-        out = avg_out + max_out
+        # out = avg_out + max_out
+        out = avg_out
         out = self.sigmoid(out)
         return out
 
