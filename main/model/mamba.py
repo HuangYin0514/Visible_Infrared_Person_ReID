@@ -31,8 +31,7 @@ class ChannelAttention(nn.Module):
     def forward(self, x):
         avg_out = self.fc(self.avg_pool(x))
         max_out = self.fc(self.max_pool(x))
-        # out = avg_out + max_out
-        out = avg_out
+        out = avg_out + max_out
         out = self.sigmoid(out)
         return out
 
@@ -67,7 +66,7 @@ class CS_MAMBA(nn.Module):
         self.norm_1 = nn.LayerNorm(in_cdim)
         self.featmap_2_patch = Featmap_2_Patch()
         self.mamba = Mamba(in_cdim=in_cdim, d_model=d_model)
-        self.patch_2_featmap = Patch_2_Featmap()
+        # self.patch_2_featmap = Patch_2_Featmap()
         self.norm_2 = nn.LayerNorm(in_cdim)
 
         self.attention = ChannelAttention(in_channels=in_cdim)
@@ -135,10 +134,6 @@ class Mamba(nn.Module):
         x = rearrange(x, "B D L -> B L D")
         x = F.silu(x)  # [B, L, D]
         y = self.ssm(x)  # [B, L, D]
-
-        y_backward = self.ssm(torch.flip(x, dims=[1]))  # [B, L, D]
-        y = (y + torch.flip(y_backward, dims=[1])) / 2  # [B, L, D]
-
         out = self.out_proj(y)  # [B, L, in_cdim]
         return out
 
