@@ -59,7 +59,7 @@ class Patch_2_Featmap(nn.Module):
 
 
 class CS_MAMBA(nn.Module):
-    def __init__(self, in_cdim=2048, d_model=512):
+    def __init__(self, in_cdim=2048, d_model=128):
         super(CS_MAMBA, self).__init__()
 
         # Mamba
