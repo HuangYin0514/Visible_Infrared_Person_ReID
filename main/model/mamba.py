@@ -59,7 +59,7 @@ class Patch_2_Featmap(nn.Module):
 
 
 class CS_MAMBA(nn.Module):
-    def __init__(self, in_cdim=2048, d_model=128):
+    def __init__(self, in_cdim=2048, d_model=256):
         super(CS_MAMBA, self).__init__()
 
         # Mamba
@@ -102,7 +102,7 @@ class CS_MAMBA(nn.Module):
 
         # ---- FFN ----
         out_vis = self.ffn_vis(vis_attention * vis_feat_map)
-        out_inf = self.ffn_inf(inf_attention * inf_feat_map)
+        out_inf = self.ffn_vis(inf_attention * inf_feat_map)
         return out_vis, out_inf
 
 
