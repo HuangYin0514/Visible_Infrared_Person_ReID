@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import einsum, rearrange, repeat
 
-POOL_HEGHT = 6
+POOL_HEGHT = 8
 POOL_WIDTH = 1
 
 
@@ -102,7 +102,7 @@ class CS_MAMBA(nn.Module):
 
         # ---- FFN ----
         out_vis = self.ffn_vis(vis_attention * vis_feat_map)
-        out_inf = self.ffn_vis(inf_attention * inf_feat_map)
+        out_inf = self.ffn_inf(inf_attention * inf_feat_map)
         return out_vis, out_inf
 
 
