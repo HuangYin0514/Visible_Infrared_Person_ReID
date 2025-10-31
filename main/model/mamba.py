@@ -7,7 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import einsum, rearrange, repeat
 
-POOL_HEGHT = 8
+POOL_HEGHT = 6
 POOL_WIDTH = 1
 
 
