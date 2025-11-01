@@ -67,7 +67,7 @@ class Calibration(nn.Module):
         vis_feat, inf_feat = torch.chunk(feat_map, 2, dim=0)
         res_vis_feat, res_inf_feat = torch.chunk(res_feat_map, 2, dim=0)
         vis_feat = self.vis_gate_calibration(vis_feat, res_vis_feat)
-        inf_feat = self.vis_gate_calibration(inf_feat, res_inf_feat)
+        inf_feat = self.inf_gate_calibration(inf_feat, res_inf_feat)
 
         calibration_feat_map = torch.cat([vis_feat, inf_feat], dim=0)
         return calibration_feat_map
