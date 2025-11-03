@@ -63,13 +63,23 @@ class Calibration(nn.Module):
         self.vis_gate_calibration = Gate_Fusion(c_dim)
         self.inf_gate_calibration = Gate_Fusion(c_dim)
 
+        self.fusion = nn.Sequential(
+            nn.Conv2d(c_dim * 2, c_dim, kernel_size=1, stride=1, padding=0),
+            nn.BatchNorm2d(c_dim),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(c_dim, c_dim, kernel_size=1, stride=1, padding=0),
+        )
+
     def forward(self, feat_map, res_feat_map):
         vis_feat, inf_feat = torch.chunk(feat_map, 2, dim=0)
         res_vis_feat, res_inf_feat = torch.chunk(res_feat_map, 2, dim=0)
         vis_feat = self.vis_gate_calibration(vis_feat, res_vis_feat)
         inf_feat = self.inf_gate_calibration(inf_feat, res_inf_feat)
 
-        calibration_feat_map = torch.cat([vis_feat, inf_feat], dim=0)
+        # calibration_feat_map = torch.cat([vis_feat, inf_feat], dim=0)
+        calibration_feat_map = torch.cat([vis_feat, inf_feat], dim=1)
+        calibration_feat_map = self.fusion(calibration_feat_map)
+        calibration_feat_map = torch.cat([calibration_feat_map, calibration_feat_map], dim=0)
         return calibration_feat_map
 
 

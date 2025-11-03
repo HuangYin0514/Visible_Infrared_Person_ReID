@@ -7,8 +7,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from einops import einsum, rearrange, repeat
 
-POOL_HEGHT = 2
-POOL_WIDTH = 2
+POOL_HEGHT = 6
+POOL_WIDTH = 1
 
 
 class ChannelAttention(nn.Module):
