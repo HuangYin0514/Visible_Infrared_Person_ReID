@@ -67,6 +67,7 @@ class Calibration(nn.Module):
             nn.Conv2d(c_dim * 2, c_dim, kernel_size=1, stride=1, padding=0),
             nn.BatchNorm2d(c_dim),
             nn.ReLU(inplace=True),
+            nn.Conv2d(c_dim, c_dim, kernel_size=1, stride=1, padding=0),
         )
 
     def forward(self, feat_map, res_feat_map):
