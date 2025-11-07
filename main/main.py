@@ -184,8 +184,9 @@ def run(config):
                 query_feat = np.zeros((data_loder.N_query, 2048))
                 gall_feat = np.zeros((data_loder.N_gallery, 2048))
             elif config.DATASET.TRAIN_DATASET == "reg_db":
-                query_feat = np.zeros((data_loder.N_query, 512 * 6))
-                gall_feat = np.zeros((data_loder.N_gallery, 512 * 6))
+                local_conv_out_channels = 256
+                query_feat = np.zeros((data_loder.N_query, local_conv_out_channels * 6))
+                gall_feat = np.zeros((data_loder.N_gallery, local_conv_out_channels * 6))
             loaders = [data_loder.query_loader, data_loder.gallery_loader]
             print(util.time_now(), "Start extracting features...")
             with torch.no_grad():
