@@ -184,7 +184,7 @@ def run(config):
                 query_feat = np.zeros((data_loder.N_query, 2048))
                 gall_feat = np.zeros((data_loder.N_gallery, 2048))
             elif config.DATASET.TRAIN_DATASET == "reg_db":
-                local_conv_out_channels = 256
+                local_conv_out_channels = 512
                 query_feat = np.zeros((data_loder.N_query, local_conv_out_channels * 6))
                 gall_feat = np.zeros((data_loder.N_gallery, local_conv_out_channels * 6))
             loaders = [data_loder.query_loader, data_loder.gallery_loader]
