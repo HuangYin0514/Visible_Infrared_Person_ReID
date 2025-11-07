@@ -152,21 +152,21 @@ def run(config):
                     total_loss += local_loss
                     meter.update({"local_loss": local_loss.item()})
 
-                # ---- Interaction  ----
-                interactin_feat_map = net.interaction(backbone_feat_map)
+                # # ---- Interaction  ----
+                # interactin_feat_map = net.interaction(backbone_feat_map)
 
-                # ---- Calibration  ----
-                calibration_feat_map = net.calibration(interactin_feat_map, backbone_feat_map)
-                calibration_feat = net.calibration_pooling(calibration_feat_map).squeeze()
-                calibration_bn_feat, calibration_cls_score = net.calibration_classifier(calibration_feat)
-                calibration_pid_loss = criterion.id(calibration_cls_score, labels)
-                total_loss += config.MODEL.MODAL_CALIBRATION_WEIGHT * calibration_pid_loss
-                meter.update({"calibration_pid_loss": calibration_pid_loss.item()})
+                # # ---- Calibration  ----
+                # calibration_feat_map = net.calibration(interactin_feat_map, backbone_feat_map)
+                # calibration_feat = net.calibration_pooling(calibration_feat_map).squeeze()
+                # calibration_bn_feat, calibration_cls_score = net.calibration_classifier(calibration_feat)
+                # calibration_pid_loss = criterion.id(calibration_cls_score, labels)
+                # total_loss += config.MODEL.MODAL_CALIBRATION_WEIGHT * calibration_pid_loss
+                # meter.update({"calibration_pid_loss": calibration_pid_loss.item()})
 
-                # ---- Propagation  ----
-                modal_propagation_loss = net.propagation(student_logits=global_cls_score, teacher_logits=calibration_cls_score)
-                total_loss += config.MODEL.MODAL_PROPAGATION_WEIGHT * modal_propagation_loss
-                meter.update({"modal_propagation_loss": modal_propagation_loss.item()})
+                # # ---- Propagation  ----
+                # modal_propagation_loss = net.propagation(student_logits=global_cls_score, teacher_logits=calibration_cls_score)
+                # total_loss += config.MODEL.MODAL_PROPAGATION_WEIGHT * modal_propagation_loss
+                # meter.update({"modal_propagation_loss": modal_propagation_loss.item()})
 
                 optimizer.zero_grad()
                 total_loss.backward()
