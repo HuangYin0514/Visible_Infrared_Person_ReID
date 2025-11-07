@@ -128,8 +128,10 @@ def run(config):
                     local_feat_list = []
                     for i in range(STRIPE_NUM):
                         local_feat_map_i = local_feat_map_list[i]
-                        local_feat_i = net.local_pool_list[i](local_feat_map_i)  # (B, 2048, 1, 1)
-                        local_feat_i = net.local_conv_list[i](local_feat_i).view(B, -1)
+                        local_feat_map_i = local_feat_map_i.view(B, 2048, -1)
+                        p = 10.0  # regDB: 10.0    SYSU: 3.0
+                        local_feat_i = (torch.mean(local_feat_map_i**p, dim=-1) + 1e-12) ** (1 / p)
+                        local_feat_i = net.local_conv_list[i](local_feat_i.view(B, -1, 1, 1)).view(B, -1)
                         local_feat_list.append(local_feat_i)
 
                     # ----------- Global ------------
