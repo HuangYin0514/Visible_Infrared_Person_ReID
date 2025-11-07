@@ -32,7 +32,7 @@ class ReIDNet(nn.Module):
             self.local_conv_list = nn.ModuleList()
             STRIPE_NUM = 6
             pool_dim = 2048
-            local_conv_out_channels = 512
+            local_conv_out_channels = 256
             for _ in range(STRIPE_NUM):
                 pool_i = GeneralizedMeanPoolingP()
                 conv_i = nn.Sequential(
