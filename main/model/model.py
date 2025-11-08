@@ -43,7 +43,7 @@ class ReIDNet(nn.Module):
 
             # ------------- Global -----------------------
             self.global_classifier = Classifier(STRIPE_NUM * local_conv_out_channels, n_class)
-            self.global_classifier_l2norm = Normalize(2)
+            self.global_l2norm = Normalize(2)
 
             # ------------- Local -----------------------
             self.local_classifier_list = nn.ModuleList()
@@ -91,7 +91,7 @@ class ReIDNet(nn.Module):
 
                 # ----------- Global ------------
                 global_feat = torch.cat(local_feat_list, dim=1)
-                global_bn_feat = self.l2norm(global_feat)
+                global_bn_feat = self.global_l2norm(global_feat)
                 eval_feats.append(global_bn_feat)
 
             eval_feats = torch.cat(eval_feats, dim=1)
