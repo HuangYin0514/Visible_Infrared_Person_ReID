@@ -28,19 +28,17 @@ class ReIDNet(nn.Module):
         elif config.DATASET.TRAIN_DATASET == "reg_db":
 
             # ------------- Partialization -----------------------
-            self.local_pool_list = nn.ModuleList()
             self.local_conv_list = nn.ModuleList()
             STRIPE_NUM = 6
             pool_dim = 2048
             local_conv_out_channels = 512
             for _ in range(STRIPE_NUM):
-                pool_i = GeneralizedMeanPoolingP()
                 conv_i = nn.Sequential(
                     nn.Conv2d(pool_dim, local_conv_out_channels, 1),
                     nn.BatchNorm2d(local_conv_out_channels),
                     nn.ReLU(inplace=True),
                 )
-                self.local_pool_list.append(pool_i)
+                conv_i.apply(weights_init_kaiming)
                 self.local_conv_list.append(conv_i)
 
             # ------------- Global -----------------------
