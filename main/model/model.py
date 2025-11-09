@@ -51,16 +51,16 @@ class ReIDNet(nn.Module):
                 local_classifier_i = Classifier(local_conv_out_channels, n_class)
                 self.local_classifier_list.append(local_classifier_i)
 
-        # ------------- Interaction -----------------------
-        self.interaction = Interaction()
+        # # ------------- Interaction -----------------------
+        # self.interaction = Interaction()
 
-        # ------------- Calibration -----------------------
-        self.calibration = Calibration()
-        self.calibration_pooling = GeneralizedMeanPoolingP()
-        self.calibration_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
+        # # ------------- Calibration -----------------------
+        # self.calibration = Calibration()
+        # self.calibration_pooling = GeneralizedMeanPoolingP()
+        # self.calibration_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
 
-        # ------------- Propagation -----------------------
-        self.propagation = Propagation(T=4)
+        # # ------------- Propagation -----------------------
+        # self.propagation = Propagation(T=4)
 
     def forward(self, x_vis, x_inf, modal):
         B, C, H, W = x_vis.shape
