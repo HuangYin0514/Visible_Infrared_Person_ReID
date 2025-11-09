@@ -155,7 +155,7 @@ def run(config):
                     meter.update({"local_loss": local_loss.item()})
 
                 # ---- Interaction  ----
-                interactin_feat_map = net.interaction(backbone_feat_map)
+                # interactin_feat_map = net.interaction(backbone_feat_map)
 
                 # ---- Calibration  ----
                 # calibration_feat_map = net.calibration(interactin_feat_map, backbone_feat_map)
