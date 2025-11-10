@@ -52,7 +52,7 @@ class ReIDNet(nn.Module):
                 self.local_classifier_list.append(local_classifier_i)
 
         # # ------------- Interaction -----------------------
-        # self.interaction = Interaction()
+        self.interaction = Interaction()
 
         # # ------------- Calibration -----------------------
         # self.calibration = Calibration()
