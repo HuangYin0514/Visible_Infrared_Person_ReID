@@ -162,7 +162,8 @@ def run(config):
                 calibration_feat = net.calibration_pooling(calibration_feat_map).squeeze()
                 calibration_bn_feat, calibration_cls_score = net.calibration_classifier(calibration_feat)
                 calibration_pid_loss = criterion.id(calibration_cls_score, labels)
-                total_loss += config.MODEL.MODAL_CALIBRATION_WEIGHT * calibration_pid_loss
+                calibration_tri_loss = criterion.hcc(calibration_feat, labels, "euc") + criterion.hcc(calibration_cls_score, labels, "kl")
+                total_loss += config.MODEL.MODAL_CALIBRATION_WEIGHT * (calibration_pid_loss + calibration_tri_loss)
                 meter.update({"calibration_pid_loss": calibration_pid_loss.item()})
 
                 # ---- Propagation  ----
