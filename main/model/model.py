@@ -61,7 +61,6 @@ class ReIDNet(nn.Module):
         self.calibration_classifier = Classifier(BACKBONE_FEATURES_DIM, n_class)
         self.calibration.apply(weights_init_kaiming)
         self.calibration_pooling.apply(weights_init_kaiming)
-        self.calibration_classifier.apply(weights_init_classifier)
 
         # # ------------- Propagation -----------------------
         self.propagation = Propagation(T=4)
