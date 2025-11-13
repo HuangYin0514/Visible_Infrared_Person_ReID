@@ -139,7 +139,7 @@ def run(config):
                     global_bn_feat, global_cls_score = net.global_classifier(global_feat)
                     global_id_loss = criterion.id(global_cls_score, labels)
                     global_hcc_loss = criterion.hcc(global_feat, labels, "euc") + criterion.hcc(global_cls_score, labels, "kl")
-                    global_loss = global_id_loss + global_hcc_loss * 2
+                    global_loss = global_id_loss + global_hcc_loss
                     total_loss += global_loss
                     meter.update({"global_loss": global_loss.item()})
 
