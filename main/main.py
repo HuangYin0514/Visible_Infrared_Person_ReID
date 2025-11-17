@@ -162,8 +162,7 @@ def run(config):
                 calibration_feat = net.calibration_pooling(calibration_feat_map).squeeze()
                 calibration_bn_feat, calibration_cls_score = net.calibration_classifier(calibration_feat)
                 calibration_pid_loss = criterion.id(calibration_cls_score, labels) * 1
-                # calibration_tri_loss = criterion.ctl(calibration_feat, labels)[0] * 0  # For sysu_mm01
-                calibration_tri_loss = criterion.ctl(calibration_feat, labels)[0] * 2  # For reg_db
+                calibration_tri_loss = criterion.ctl(calibration_feat, labels)[0] * 2  # For reg_db / 删除该语句不影响sysu精度
                 total_loss += config.MODEL.MODAL_CALIBRATION_WEIGHT * (calibration_pid_loss + calibration_tri_loss)
                 meter.update({"calibration_pid_loss": calibration_pid_loss.item()})
 

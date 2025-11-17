@@ -4,14 +4,19 @@
 wandb login c74133df8c2cf575304acf8a99fe03ab74b6fe6a
 
 
+
+
 ############################################################
-# Runs
+# Sysu_mm01
 ############################################################
-# python pre_process_sysu.py --data_path /kaggle/.../SYSU_MM01_concise111
+# python main.py --config_file "config/method.yml" TASK.NOTES=V310 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.01
 
-python main.py --config_file "config/method.yml" TASK.NOTES=V310 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.01
+python main.py --config_file "config/method.yml" TASK.NOTES=V311 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.02
 
 
+############################################################
+# Reg_db
+############################################################
 # python main.py --config_file "config/method.yml" TASK.NOTES=V306 TASK.NAME=B_I_C_P_regdb_1 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=1 MODEL.NON_LOCAL_FLAG=False MODEL.MODAL_CALIBRATION_WEIGHT=1 MODEL.MODAL_PROPAGATION_WEIGHT=0.01
 
 # python main.py --config_file "config/method.yml" TASK.NOTES=V306 TASK.NAME=B_I_C_P_regdb_2 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=2 MODEL.NON_LOCAL_FLAG=False MODEL.MODAL_CALIBRATION_WEIGHT=1 MODEL.MODAL_PROPAGATION_WEIGHT=0.01
@@ -31,3 +36,6 @@ python main.py --config_file "config/method.yml" TASK.NOTES=V310 TASK.NAME=B_I_C
 # python main.py --config_file "config/method.yml" TASK.NOTES=V306 TASK.NAME=B_I_C_P_regdb_9 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=9 MODEL.NON_LOCAL_FLAG=False MODEL.MODAL_CALIBRATION_WEIGHT=1 MODEL.MODAL_PROPAGATION_WEIGHT=0.01
 
 # python main.py --config_file "config/method.yml" TASK.NOTES=V306 TASK.NAME=B_I_C_P_regdb_10 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=10 MODEL.NON_LOCAL_FLAG=False MODEL.MODAL_CALIBRATION_WEIGHT=1 MODEL.MODAL_PROPAGATION_WEIGHT=0.01
+
+
+
