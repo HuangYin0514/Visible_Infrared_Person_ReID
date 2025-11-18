@@ -19,7 +19,9 @@ wandb login c74133df8c2cf575304acf8a99fe03ab74b6fe6a
 
 # python main.py --config_file "config/method.yml" TASK.NOTES=V316 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.09
 
-python main.py --config_file "config/method.yml" TASK.NOTES=V317 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.1
+# python main.py --config_file "config/method.yml" TASK.NOTES=V317 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.1
+
+python main.py --config_file "config/method.yml" TASK.NOTES=V318 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.2
 
 ############################################################
 # Reg_db
