@@ -8,15 +8,16 @@ from pathlib import Path
 import numpy as np
 import scipy.io
 from config_plot import *
+from matplotlib.ticker import MultipleLocator
 
 OUTPUT_DIR = "./analysis/results/ablation"
 
 
 def plot_parameter_lossWeight():
     # 设置数据 --------------------------------------------------------
-    x_values = [0.00, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1]
-    map_values = [68.37, 68.17, 68.77, 68.58, 68.24, 67.50, 68.46, 68.55, 69.61, 68.56, 68.76]
-    rank1_values = [69.68, 69.42, 69.66, 70.89, 70.26, 69.10, 68.92, 70.79, 71.73, 70.01, 70.58]
+    x_values = [0.00, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.11, 0.12]
+    map_values = [68.37, 68.17, 68.77, 68.58, 68.24, 67.50, 68.46, 68.55, 69.61, 68.56, 68.76, 67.99, 68.76]
+    rank1_values = [69.68, 69.42, 69.66, 70.89, 70.26, 69.10, 68.92, 70.79, 71.73, 70.01, 70.58, 70.97, 71.10]
 
     # 创建画布 --------------------------------------------------------
     LINE_NUM = 1
@@ -32,12 +33,16 @@ def plot_parameter_lossWeight():
     offset = int((max_values - min_values) * 0.1)
 
     # 绘制左侧轴
-    axis_1.set_ylim(min_values + offset, max_values + offset)
+    # axis_1.set_ylim(min_values + offset, max_values + offset)
+    axis_1.set_ylim(63, 78)
     axis_1.set_ylabel("mAP (%)")
+    axis_1.yaxis.set_major_locator(MultipleLocator(3))  # 设置主刻度间隔为 5
 
     # 绘制右侧轴
-    axis_2.set_ylim(min_values - offset, max_values - offset)
+    # axis_2.set_ylim(min_values - offset, max_values - offset)
+    axis_2.set_ylim(60, 75)
     axis_2.set_ylabel("Rank-1 (%)")
+    axis_2.yaxis.set_major_locator(MultipleLocator(3))  # 设置主刻度间隔为 5
 
     # 绘制横轴
     axis_1.set_xlabel(r"Parameter $\lambda$")
@@ -48,7 +53,7 @@ def plot_parameter_lossWeight():
 
     # 图像调整
     # axis_1.grid(axis="x")
-    axis_2.grid(False)
+    axis_2.grid(True)
     handles1, labels1 = axis_1.get_legend_handles_labels()
     handles2, labels2 = axis_2.get_legend_handles_labels()
     axis_2.legend(handles1 + handles2, labels1 + labels2).get_frame().set_alpha(1)
