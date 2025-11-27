@@ -61,8 +61,12 @@ class Data_Loder:
             color_pos, thermal_pos = GenIdx(trainset.color_label, trainset.thermal_label)
 
             # testing set
-            query_img, query_label = process_test_regdb(config.DATASET.TRAIN_DATASET_PATH, trial=config.DATASET.TRIAL, modal="visible")
-            gallery_img, gallery_label = process_test_regdb(config.DATASET.TRAIN_DATASET_PATH, trial=config.DATASET.TRIAL, modal="thermal")
+            if config.TEST.REG_DB_MODE == "T2V":
+                query_img, query_label = process_test_regdb(config.DATASET.TRAIN_DATASET_PATH, trial=config.DATASET.TRIAL, modal="thermal")
+                gallery_img, gallery_label = process_test_regdb(config.DATASET.TRAIN_DATASET_PATH, trial=config.DATASET.TRIAL, modal="visible")
+            else:
+                query_img, query_label = process_test_regdb(config.DATASET.TRAIN_DATASET_PATH, trial=config.DATASET.TRIAL, modal="visible")
+                gallery_img, gallery_label = process_test_regdb(config.DATASET.TRAIN_DATASET_PATH, trial=config.DATASET.TRIAL, modal="thermal")
             query_cam, gallery_cam = None, None
 
         queryset = TestDataset(query_img, query_label, transform=transform_test, img_size=config.DATALOADER.IMAGE_SIZE)
