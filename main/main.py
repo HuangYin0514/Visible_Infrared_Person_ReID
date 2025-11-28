@@ -244,6 +244,80 @@ def run(config):
                 optimizer.zero_grad()
                 total_loss.backward()
                 optimizer.step()
+
+            elif config.MODEL.MODULE == "B_IC_IP":
+                total_loss = 0
+                B = vis_imgs.size(0) * 2
+
+                vis_labels, inf_labels = vis_labels.to(DEVICE), inf_labels.to(DEVICE)
+                labels = torch.cat([vis_labels, inf_labels], 0)
+                vis_imgs, inf_imgs = vis_imgs.to(DEVICE), inf_imgs.to(DEVICE)
+
+                backbone_feat_map = net(vis_imgs, inf_imgs, modal="all")
+
+                if config.DATASET.TRAIN_DATASET == "sysu_mm01":
+                    # ----------- Global ------------
+                    global_feat = net.global_pool(backbone_feat_map).view(B, 2048)  # (B, 2048)
+                    global_bn_feat, global_cls_score = net.global_classifier(global_feat)
+                    global_id_loss = criterion.id(global_cls_score, labels)
+                    global_hcc_loss = criterion.hcc(global_feat, labels, "euc") + criterion.hcc(global_cls_score, labels, "kl")
+                    global_loss = global_id_loss + global_hcc_loss
+                    total_loss += global_loss
+                    meter.update({"global_loss": global_loss.item()})
+                elif config.DATASET.TRAIN_DATASET == "reg_db":
+                    # ------------- Partialization -----------------------
+                    STRIPE_NUM = 6
+                    local_feat_map_list = torch.chunk(backbone_feat_map, STRIPE_NUM, dim=2)
+                    local_feat_list = []
+                    for i in range(STRIPE_NUM):
+                        local_feat_map_i = local_feat_map_list[i]
+                        local_feat_map_i = local_feat_map_i.view(B, 2048, -1)
+                        p = 10.0  # regDB: 10.0    SYSU: 3.0
+                        local_feat_i = (torch.mean(local_feat_map_i**p, dim=-1) + 1e-12) ** (1 / p)
+                        local_feat_i = net.local_conv_list[i](local_feat_i.view(B, -1, 1, 1)).view(B, -1)
+                        local_feat_list.append(local_feat_i)
+
+                    # ----------- Global ------------
+                    global_feat = torch.cat(local_feat_list, dim=1)
+                    global_bn_feat, global_cls_score = net.global_classifier(global_feat)
+                    global_id_loss = criterion.id(global_cls_score, labels)
+                    global_hcc_loss = criterion.hcc(global_feat, labels, "euc") + criterion.hcc(global_cls_score, labels, "kl")
+                    global_loss = global_id_loss + global_hcc_loss
+                    total_loss += global_loss
+                    meter.update({"global_loss": global_loss.item()})
+
+                    # ----------- Local ------------
+                    local_loss = 0
+                    for i in range(STRIPE_NUM):
+                        local_feat_i = local_feat_list[i]
+                        local_bn_feat, local_cls_score = net.local_classifier_list[i](local_feat_i)
+                        local_pid_loss = criterion.id(local_cls_score, labels)
+                        local_ctl_loss = criterion.ctl(local_feat_i, labels)[0]
+                        local_loss += local_pid_loss + local_ctl_loss * 2
+                    total_loss += local_loss
+                    meter.update({"local_loss": local_loss.item()})
+
+                # ---- Interaction  ----
+                interactin_feat_map = net.interaction(backbone_feat_map)
+
+                # ---- Calibration  ----
+                calibration_feat_map = net.calibration(interactin_feat_map, interactin_feat_map)
+                calibration_feat = net.calibration_pooling(calibration_feat_map).squeeze()
+                calibration_bn_feat, calibration_cls_score = net.calibration_classifier(calibration_feat)
+                calibration_pid_loss = criterion.id(calibration_cls_score, labels) * 1
+                calibration_tri_loss = criterion.ctl(calibration_feat, labels)[0] * 2  # For reg_db / 删除该语句不影响sysu精度
+                total_loss += config.MODEL.MODAL_CALIBRATION_WEIGHT * (calibration_pid_loss + calibration_tri_loss)
+                meter.update({"calibration_pid_loss": calibration_pid_loss.item()})
+
+                # ---- Propagation  ----
+                modal_propagation_loss = net.propagation(student_logits=global_cls_score, teacher_logits=calibration_cls_score)
+                total_loss += config.MODEL.MODAL_PROPAGATION_WEIGHT * modal_propagation_loss / vis_imgs.size(0)
+                meter.update({"modal_propagation_loss": modal_propagation_loss.item()})
+
+                optimizer.zero_grad()
+                total_loss.backward()
+                optimizer.step()
+
         logger("Time: {}; Epoch: {}; {}".format(util.time_now(), epoch, meter.get_str()))
         wandb.log({"Lr": optimizer.param_groups[0]["lr"], **meter.get_dict()})
 
