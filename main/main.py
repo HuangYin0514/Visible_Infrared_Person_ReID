@@ -175,6 +175,62 @@ def run(config):
                 total_loss.backward()
                 optimizer.step()
 
+            elif config.MODEL.MODULE == "B":
+                total_loss = 0
+                B = vis_imgs.size(0) * 2
+
+                vis_labels, inf_labels = vis_labels.to(DEVICE), inf_labels.to(DEVICE)
+                labels = torch.cat([vis_labels, inf_labels], 0)
+                vis_imgs, inf_imgs = vis_imgs.to(DEVICE), inf_imgs.to(DEVICE)
+
+                backbone_feat_map = net(vis_imgs, inf_imgs, modal="all")
+
+                if config.DATASET.TRAIN_DATASET == "sysu_mm01":
+                    # ----------- Global ------------
+                    global_feat = net.global_pool(backbone_feat_map).view(B, 2048)  # (B, 2048)
+                    global_bn_feat, global_cls_score = net.global_classifier(global_feat)
+                    global_id_loss = criterion.id(global_cls_score, labels)
+                    global_hcc_loss = criterion.hcc(global_feat, labels, "euc") + criterion.hcc(global_cls_score, labels, "kl")
+                    global_loss = global_id_loss + global_hcc_loss
+                    total_loss += global_loss
+                    meter.update({"global_loss": global_loss.item()})
+                elif config.DATASET.TRAIN_DATASET == "reg_db":
+                    # ------------- Partialization -----------------------
+                    STRIPE_NUM = 6
+                    local_feat_map_list = torch.chunk(backbone_feat_map, STRIPE_NUM, dim=2)
+                    local_feat_list = []
+                    for i in range(STRIPE_NUM):
+                        local_feat_map_i = local_feat_map_list[i]
+                        local_feat_map_i = local_feat_map_i.view(B, 2048, -1)
+                        p = 10.0  # regDB: 10.0    SYSU: 3.0
+                        local_feat_i = (torch.mean(local_feat_map_i**p, dim=-1) + 1e-12) ** (1 / p)
+                        local_feat_i = net.local_conv_list[i](local_feat_i.view(B, -1, 1, 1)).view(B, -1)
+                        local_feat_list.append(local_feat_i)
+
+                    # ----------- Global ------------
+                    global_feat = torch.cat(local_feat_list, dim=1)
+                    global_bn_feat, global_cls_score = net.global_classifier(global_feat)
+                    global_id_loss = criterion.id(global_cls_score, labels)
+                    global_hcc_loss = criterion.hcc(global_feat, labels, "euc") + criterion.hcc(global_cls_score, labels, "kl")
+                    global_loss = global_id_loss + global_hcc_loss
+                    total_loss += global_loss
+                    meter.update({"global_loss": global_loss.item()})
+
+                    # ----------- Local ------------
+                    local_loss = 0
+                    for i in range(STRIPE_NUM):
+                        local_feat_i = local_feat_list[i]
+                        local_bn_feat, local_cls_score = net.local_classifier_list[i](local_feat_i)
+                        local_pid_loss = criterion.id(local_cls_score, labels)
+                        local_ctl_loss = criterion.ctl(local_feat_i, labels)[0]
+                        local_loss += local_pid_loss + local_ctl_loss * 2
+                    total_loss += local_loss
+                    meter.update({"local_loss": local_loss.item()})
+
+                optimizer.zero_grad()
+                total_loss.backward()
+                optimizer.step()
+
             elif config.MODEL.MODULE == "B_IP":
                 total_loss = 0
                 B = vis_imgs.size(0) * 2
