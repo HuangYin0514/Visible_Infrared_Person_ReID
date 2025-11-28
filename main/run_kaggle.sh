@@ -16,7 +16,7 @@ wandb login c74133df8c2cf575304acf8a99fe03ab74b6fe6a
 
 # python main.py --config_file "config/method.yml" TASK.NOTES=V348 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.4  DATASET.MODE=indoor
 
-python main.py --config_file "config/method.yml" TASK.NOTES=V352 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.4 MODEL.MODULE=B_IP DATASET.MODE=indoor 
+python main.py --config_file "config/method.yml" TASK.NOTES=V353 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.4 MODEL.MODULE=B_IP
 
 ############################################################
 # Reg_db
