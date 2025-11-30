@@ -59,7 +59,7 @@ def run(config):
     scheduler = Scheduler(config, optimizer)
 
     ######################################################################
-    # Scheduler
+    # Training & Evaluation
     print("==> Start Training...")
     # 初始化最佳指标
     best_epoch, best_mAP, best_rank1 = 0, 0, 0
