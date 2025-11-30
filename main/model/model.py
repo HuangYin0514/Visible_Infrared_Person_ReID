@@ -70,6 +70,11 @@ class ReIDNet(nn.Module):
         if config.DATASET.TRAIN_DATASET == "reg_db":
             self.propagation.apply(weights_init_kaiming)
 
+    def heatmap(self, x_vis, x_inf, modal):
+        B, C, H, W = x_vis.shape
+        backbone_feat_map = self.backbone(x_vis, x_inf, modal)
+        return backbone_feat_map
+
     def forward(self, x_vis, x_inf, modal):
         B, C, H, W = x_vis.shape
 

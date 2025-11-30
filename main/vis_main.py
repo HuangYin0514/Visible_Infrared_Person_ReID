@@ -3,8 +3,9 @@ import os
 import warnings
 
 import torch
+import torch.utils.data as data
 import util
-from data import Data_Loder
+from data import Data_Loder, IdentitySampler
 from model import ReIDNet
 from visualization import visualization
 
@@ -31,16 +32,44 @@ def run(config):
 
     ######################################################################
     # Data
+    # Dataset返回数据格式：图像，身份标签，摄像头标签，路径
     data_loder = Data_Loder(config)
 
     ######################################################################
     # Model
     net = ReIDNet(config, data_loder.N_class).to(DEVICE)
+    util.resume_model(net, config.MODEL.RESUME_EPOCH, path=os.path.join(config.SAVE.OUTPUT_PATH, "models/"))
 
     ########################################################
     # 可视化
     ########################################################
-    visualization(config, net, data_loder)
+    sampler = IdentitySampler(
+        data_loder.trainset.color_label,
+        data_loder.trainset.thermal_label,
+        data_loder.color_pos,
+        data_loder.thermal_pos,
+        config.DATALOADER.NUM_INSTANCES,
+        config.DATALOADER.BATCHSIZE,
+        config.MODEL.RESUME_EPOCH,
+    )
+    data_loder.trainset.cIndex = sampler.index1  # color index
+    data_loder.trainset.tIndex = sampler.index2  # thermal index
+    # print(epoch)
+    # print(data_loder.trainset.cIndex)
+    # print(data_loder.trainset.tIndex)
+
+    # dataloder
+    loader_batch = config.DATALOADER.BATCHSIZE * config.DATALOADER.NUM_INSTANCES
+    train_loader = data.DataLoader(
+        data_loder.trainset,
+        batch_size=loader_batch,
+        sampler=sampler,
+        num_workers=config.DATALOADER.NUM_WORKERS,
+        drop_last=True,
+    )
+    query_loader = data_loder.query_loader
+    gallery_loader = data_loder.gallery_loader
+    visualization(config, net, train_loader, query_loader, gallery_loader, DEVICE)
 
 
 if __name__ == "__main__":
