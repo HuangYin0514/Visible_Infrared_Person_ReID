@@ -46,14 +46,17 @@ class Data_Loder:
         ###################################################################################################
         # Load data
         if config.DATASET.TRAIN_DATASET == "sysu_mm01":
-            # training set
-            trainset = Dataset4Sysu_mm01(data_dir=config.DATASET.TRAIN_DATASET_PATH, transform=transform_train)
-            # generate the idx of each person identity
-            color_pos, thermal_pos = GenIdx(trainset.color_label, trainset.thermal_label)
+            if config.TASK.MODE == "visualization":
+                pass
+            else:
+                # training set
+                trainset = Dataset4Sysu_mm01(data_dir=config.DATASET.TRAIN_DATASET_PATH, transform=transform_train)
+                # generate the idx of each person identity
+                color_pos, thermal_pos = GenIdx(trainset.color_label, trainset.thermal_label)
 
-            # testing set
-            query_img, query_label, query_cam = process_query_sysu(config.DATASET.TRAIN_DATASET_PATH, mode=config.DATASET.MODE)
-            gallery_img, gallery_label, gallery_cam = process_gallery_sysu(config.DATASET.TRAIN_DATASET_PATH, mode=config.DATASET.MODE, trial=0)
+                # testing set
+                query_img, query_label, query_cam = process_query_sysu(config.DATASET.TRAIN_DATASET_PATH, mode=config.DATASET.MODE)
+                gallery_img, gallery_label, gallery_cam = process_gallery_sysu(config.DATASET.TRAIN_DATASET_PATH, mode=config.DATASET.MODE, trial=0)
 
         elif config.DATASET.TRAIN_DATASET == "reg_db":
             trainset = RegDBData(data_dir=config.DATASET.TRAIN_DATASET_PATH, trial=config.DATASET.TRIAL, transform=transform_train)

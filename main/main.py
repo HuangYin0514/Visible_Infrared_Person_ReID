@@ -444,12 +444,12 @@ def run(config):
                 best_rank1 = cmc[0]
                 best_mAP = mAP
                 wandb.log({"best_epoch": best_epoch, "best_rank1": best_rank1, "best_mAP": best_mAP})
-                # if epoch>50:
-                #     util.save_model(
-                #         model=net,
-                #         epoch=epoch,
-                #         path_dir=os.path.join(config.SAVE.OUTPUT_PATH, "models/"),
-                #     )
+                if epoch > 40:
+                    util.save_model(
+                        model=net,
+                        epoch=epoch,
+                        path_dir=os.path.join(config.SAVE.OUTPUT_PATH, "models/"),
+                    )
 
             logger("Time: {}; Test on Dataset: {}, \nmAP: {} \nRank: {}".format(util.time_now(), config.DATASET.TRAIN_DATASET, mAP, cmc))
             wandb.log({"test_epoch": epoch, "mAP": mAP, "Rank1": cmc[0]})
