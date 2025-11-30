@@ -11,7 +11,7 @@ from util import time_now
 
 
 def visualization(config, net, train_loader, query_loader, gallery_loader, DEVICE):
-    visualization_heatmap(config, net, train_loader, query_loader, gallery_loader, DEVICE)
+    visualization_heatmap(config, net, train_loader, query_loader, gallery_loader, DEVICE)  # Grad-CAM对训练集可视化 / 可选可见光图像/红外图像
     # visualization_rank(config, base, loader)
     # visualization_tsne(config, base, loader)
 
@@ -28,7 +28,6 @@ def visualization_heatmap(config, net, train_loader, query_loader, gallery_loade
             vis_imgs, inf_imgs, vis_labels, inf_labels = data
             vis_imgs = vis_imgs.to(DEVICE)
             heatmap_core.__call__(vis_imgs, net, net.global_classifier, vis_labels, modal="vis")
-            break
     print(time_now(), "CAM done.")
 
 
