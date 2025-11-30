@@ -54,9 +54,6 @@ def run(config):
     )
     data_loder.trainset.cIndex = sampler.index1  # color index
     data_loder.trainset.tIndex = sampler.index2  # thermal index
-    # print(epoch)
-    # print(data_loder.trainset.cIndex)
-    # print(data_loder.trainset.tIndex)
 
     # dataloder
     loader_batch = config.DATALOADER.BATCHSIZE * config.DATALOADER.NUM_INSTANCES
@@ -69,7 +66,7 @@ def run(config):
     )
     query_loader = data_loder.query_loader
     gallery_loader = data_loder.gallery_loader
-    visualization(config, net, train_loader, query_loader, gallery_loader, DEVICE)
+    visualization(config, net, data_loder, train_loader, query_loader, gallery_loader, DEVICE)
 
 
 if __name__ == "__main__":
