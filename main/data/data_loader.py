@@ -71,12 +71,8 @@ class Data_Loder:
                 gallery_img, gallery_label = process_test_regdb(config.DATASET.TRAIN_DATASET_PATH, trial=config.DATASET.TRIAL, modal="thermal")
             query_cam, gallery_cam = None, None
 
-        if config.TASK.MODE == "visualization":
-            queryset = VisualizationTestDataset(query_img, query_label, transform=transform_test, img_size=config.DATALOADER.IMAGE_SIZE)
-            gallset = VisualizationTestDataset(gallery_img, gallery_label, transform=transform_test, img_size=config.DATALOADER.IMAGE_SIZE)
-        else:
-            queryset = TestDataset(query_img, query_label, transform=transform_test, img_size=config.DATALOADER.IMAGE_SIZE)
-            gallset = TestDataset(gallery_img, gallery_label, transform=transform_test, img_size=config.DATALOADER.IMAGE_SIZE)
+        queryset = TestDataset(query_img, query_label, transform=transform_test, img_size=config.DATALOADER.IMAGE_SIZE)
+        gallset = TestDataset(gallery_img, gallery_label, transform=transform_test, img_size=config.DATALOADER.IMAGE_SIZE)
 
         query_loader = data.DataLoader(queryset, batch_size=config.DATALOADER.TEST_BATCH, shuffle=False, num_workers=config.DATALOADER.NUM_WORKERS)
         gallery_loader = data.DataLoader(gallset, batch_size=config.DATALOADER.TEST_BATCH, shuffle=False, num_workers=config.DATALOADER.NUM_WORKERS)
@@ -226,34 +222,6 @@ class TestDataset(data.Dataset):
         img1, target1 = self.test_image[index], self.test_label[index]
         img1 = self.transform(img1)
         return img1, target1
-
-    def __len__(self):
-        return len(self.test_image)
-
-
-class VisualizationTestDataset(data.Dataset):
-    """
-    返回数据格式：图像，身份标签，摄像头标签，路径
-    """
-
-    def __init__(self, test_img_file, test_label, transform=None, img_size=(144, 288)):
-
-        test_image = []
-        for i in range(len(test_img_file)):
-            img = Image.open(test_img_file[i])
-            img = img.resize((img_size[1], img_size[0]), Image.LANCZOS)
-            pix_array = np.array(img)
-            test_image.append(pix_array)
-        test_image = np.array(test_image)
-        self.test_img_file = test_img_file
-        self.test_image = test_image
-        self.test_label = test_label
-        self.transform = transform
-
-    def __getitem__(self, index):
-        img, PIDs, CIDs, paths = self.test_image[index], self.test_label[index], None, self.test_img_file[index]
-        img = self.transform(img)
-        return img, PIDs, 0, paths
 
     def __len__(self):
         return len(self.test_image)

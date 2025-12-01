@@ -56,7 +56,7 @@ def visualization_rank(config, net, data_loder, query_loader, gallery_loader, DE
                 modal = modal_map.get(loader_id)
             ptr = 0
             for data in loader:
-                imgs, pids, cids, paths = data
+                imgs, pids = data
                 batch_num = imgs.size(0)
                 imgs = imgs.to(DEVICE)
 
@@ -175,10 +175,7 @@ class Heatmap_Core:
 
             # Image
             img = images[j, ...]
-            for t, m, s in zip(img, self.IMAGENET_MEAN, self.IMAGENET_STD):
-                t.mul_(s).add_(m).clamp_(0, 1)
-            img_np = np.uint8(np.floor(img.cpu().detach().numpy() * 255))
-            img_np = img_np.transpose((1, 2, 0))  # (c, h, w) -> (h, w, c)
+            img_np = tensor_2_image(img, self.IMAGENET_MEAN, self.IMAGENET_STD)
 
             # Activation map
             am = heatmaps[j, ...].cpu().detach().numpy()
@@ -195,7 +192,7 @@ class Heatmap_Core:
 
             # from left to right: original image, activation map, overlapped image
             grid_img = 255 * np.ones((height, 3 * width + 2 * self.GRID_SPACING, 3), dtype=np.uint8)
-            grid_img[:, :width, :] = img_np[:, :, ::-1]
+            grid_img[:, :width, :] = img_np
             grid_img[:, width + self.GRID_SPACING : 2 * width + self.GRID_SPACING, :] = am
             grid_img[:, 2 * width + 2 * self.GRID_SPACING :, :] = overlapped
 
@@ -225,6 +222,9 @@ class Rank_Core:
         self.topk = 10
         self.data_type = "image"
 
+        self.IMAGENET_MEAN = [0.485, 0.456, 0.406]
+        self.IMAGENET_STD = [0.229, 0.224, 0.225]
+
         self.ranked_dir = os.path.join(config.SAVE.OUTPUT_PATH, "rank/")
         if not os.path.exists(self.ranked_dir):
             os.makedirs(self.ranked_dir)
@@ -243,32 +243,31 @@ class Rank_Core:
         indices = np.argsort(distmat)[:, ::-1]
 
         for q_idx in range(num_q):
-            _, qpid, qcamid, qimg_path = query[q_idx]
-            qimg_path_name = qimg_path[0] if isinstance(qimg_path, (tuple, list)) else qimg_path
+            q_feat, qpid = query[q_idx]
+            qcamid = 0
 
             if data_type == "image":
-                qimg = cv2.imread(qimg_path)
+                qimg = tensor_2_image(q_feat, self.IMAGENET_MEAN, self.IMAGENET_STD)
                 qimg = cv2.resize(qimg, (width, height))
                 qimg = cv2.copyMakeBorder(qimg, self.BW, self.BW, self.BW, self.BW, cv2.BORDER_CONSTANT, value=(0, 0, 0))
-                # resize twice to ensure that the border width is consistent across images
-                qimg = cv2.resize(qimg, (width, height))
+                qimg = cv2.resize(qimg, (width, height))  # resize twice to ensure that the border width is consistent across images
                 num_cols = topk + 1
                 grid_img = 255 * np.ones((height, num_cols * width + topk * self.GRID_SPACING + self.QUERY_EXTRA_SPACING, 3), dtype=np.uint8)
                 grid_img[:, :width, :] = qimg
 
             rank_idx = 1
             for g_idx in indices[q_idx, :]:
-                _, gpid, gcamid, gimg_path = gallery[g_idx]
+                g_feat, gpid = gallery[g_idx]
+                gcamid = 1
                 invalid = (qpid == gpid) & (qcamid == gcamid)
                 if not invalid:
                     matched = gpid == qpid
 
                     # if matched and rank_idx == 1:  # 过滤, rank-1 错误的情况
                     #     continue
-
                     if data_type == "image":
                         border_color = self.GREEN if matched else self.RED
-                        gimg = cv2.imread(gimg_path)
+                        gimg = tensor_2_image(g_feat, self.IMAGENET_MEAN, self.IMAGENET_STD)
                         gimg = cv2.resize(gimg, (width, height))
                         gimg = cv2.copyMakeBorder(gimg, self.BW, self.BW, self.BW, self.BW, cv2.BORDER_CONSTANT, value=border_color)
                         gimg = cv2.resize(gimg, (width, height))
@@ -283,7 +282,7 @@ class Rank_Core:
             if data_type == "image":
                 # if qpid != 19:  # 查询特定的行人图像
                 #     continue
-                imname = os.path.basename(os.path.splitext(qimg_path_name)[0])
+                imname = str(qpid) + "_" + str(random.randint(100000, 999999))
                 cv2.imwrite(os.path.join(save_dir, imname + ".jpg"), grid_img)
 
             if (q_idx + 1) % 100 == 0:
@@ -303,3 +302,11 @@ class Rank_Core:
         )
         # model.train()
         # classifier.train()
+
+
+def tensor_2_image(image, IMAGENET_MEAN, IMAGENET_STD):
+    for t, m, s in zip(image, IMAGENET_MEAN, IMAGENET_STD):
+        t.mul_(s).add_(m).clamp_(0, 1)
+    img_np = np.uint8(np.floor(image.cpu().detach().numpy() * 255))
+    img_np = img_np.transpose((1, 2, 0))  # (c, h, w) -> (h, w, c)
+    return img_np[:, :, ::-1]
