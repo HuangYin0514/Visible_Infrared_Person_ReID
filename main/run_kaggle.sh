@@ -25,8 +25,12 @@ wandb login c74133df8c2cf575304acf8a99fe03ab74b6fe6a
 # python main.py --config_file "config/method.yml" TASK.NOTES=V362 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.4 
 
 
-mkdir results/outputs/models
-wget https://drive.google.com/file/d/1fbiBLdseQU9uJSGnEzu_JZNIdrZbVYhK/view?usp=drive_link -O results/outputs/models/model_48.pth
+mkdir -p results/outputs/models
+
+FILEID="1fbiBLdseQU9uJSGnEzu_JZNIdrZbVYhK"
+FILENAME="results/outputs/models/model_48.pth"
+wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate "https://docs.google.com/uc?export=download&id=${FILEID}" -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=${FILEID}" -O ${FILENAME} && rm -f /tmp/cookies.txt
+
 python vis_main.py --config_file "config/method.yml" TASK.NOTES=V362 TASK.NAME=visualization TASK.MODE=visualization MODEL.RESUME_EPOCH=48
 tar -czf results.tar.gz results
 rm -rf results/outputs/*
