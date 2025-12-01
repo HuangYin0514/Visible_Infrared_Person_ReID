@@ -27,10 +27,6 @@ wandb login c74133df8c2cf575304acf8a99fe03ab74b6fe6a
 
 mkdir -p results/outputs/models
 
-# FILEID="1fbiBLdseQU9uJSGnEzu_JZNIdrZbVYhK"
-# FILENAME="results/outputs/models/model_48.pth"
-# wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate "https://docs.google.com/uc?export=download&id=${FILEID}" -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=${FILEID}" -O ${FILENAME} && rm -f /tmp/cookies.txt
-
 wget -O results/outputs/models/model_48.pth https://storage.googleapis.com/kaggle-script-versions/283059390/output/Visible_Infrared_Person_ReID/main/results/outputs/models/model_48.pth?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=gcp-kaggle-com%40kaggle-161607.iam.gserviceaccount.com%2F20251201%2Fauto%2Fstorage%2Fgoog4_request&X-Goog-Date=20251201T183642Z&X-Goog-Expires=3600&X-Goog-SignedHeaders=host&X-Goog-Signature=305c4fc8bd3435801493713e02dc7f19eb82e849facb47599a1a3908615545f8969d20cb854016d68170eb065cd263348f2498d3ddb6b0d7ccdfdbb27f1335bdce3bc33e82231681316d195b37843d8a364d65fbe852241d913848dd28f66f9d224969cb22df0c4b2fbc0609ce01a0e7b98ec04649bd78a30777fb3ed0062bdf29e1ab236281e2d7f529f7045eb2a29a68225269fefcb7f4de3ccb597220b60ae28e880e44b3dcbbd2a0bf986818b5a5e87d9434372377b082017479220e386c410c2e5f824184cfc4f6aa6ed89774910d1e6f4b6749a293cbb6ffed13cb20cb9716f81a5b7b48375ddbc1827c2d01b6c6090c4fb237d5a9697f1f5f18a4fa33
 
 python vis_main.py --config_file "config/method.yml" TASK.NOTES=V362 TASK.NAME=visualization TASK.MODE=visualization MODEL.RESUME_EPOCH=48
