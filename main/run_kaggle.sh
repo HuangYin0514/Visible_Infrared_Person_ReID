@@ -22,8 +22,11 @@ wandb login c74133df8c2cf575304acf8a99fe03ab74b6fe6a
 
 # python main.py --config_file "config/method.yml" TASK.NOTES=V355 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.4 MODEL.MODULE=B
 
-python main.py --config_file "config/method.yml" TASK.NOTES=V362 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.4 
+# python main.py --config_file "config/method.yml" TASK.NOTES=V362 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.4 
 
+
+mkdir results/outputs/models
+wget https://drive.google.com/file/d/1fbiBLdseQU9uJSGnEzu_JZNIdrZbVYhK/view?usp=drive_link -O results/outputs/models/model_48.pth
 python vis_main.py --config_file "config/method.yml" TASK.NOTES=V362 TASK.NAME=visualization TASK.MODE=visualization MODEL.RESUME_EPOCH=48
 tar -czf results.tar.gz results
 rm -rf results/outputs/*

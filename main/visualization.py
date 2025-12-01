@@ -175,7 +175,10 @@ class Heatmap_Core:
 
             # Image
             img = images[j, ...]
-            img_np = tensor_2_image(img, self.IMAGENET_MEAN, self.IMAGENET_STD)
+            for t, m, s in zip(img, self.IMAGENET_MEAN, self.IMAGENET_STD):
+                t.mul_(s).add_(m).clamp_(0, 1)
+            img_np = np.uint8(np.floor(img.cpu().detach().numpy() * 255))
+            img_np = img_np.transpose((1, 2, 0))  # (c, h, w) -> (h, w, c)
 
             # Activation map
             am = heatmaps[j, ...].cpu().detach().numpy()
@@ -192,7 +195,7 @@ class Heatmap_Core:
 
             # from left to right: original image, activation map, overlapped image
             grid_img = 255 * np.ones((height, 3 * width + 2 * self.GRID_SPACING, 3), dtype=np.uint8)
-            grid_img[:, :width, :] = img_np
+            grid_img[:, :width, :] = img_np[:, :, ::-1]
             grid_img[:, width + self.GRID_SPACING : 2 * width + self.GRID_SPACING, :] = am
             grid_img[:, 2 * width + 2 * self.GRID_SPACING :, :] = overlapped
 
