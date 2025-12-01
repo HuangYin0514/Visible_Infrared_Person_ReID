@@ -24,5 +24,5 @@ def save_model(model, epoch, path_dir):
 
 def resume_model(model, resume_epoch, path):
     model_path = os.path.join(path, "model_{}.pth".format(resume_epoch))
-    model.load_state_dict(torch.load(model_path), strict=False)
+    model.load_state_dict(torch.load(model_path, weights_only=False), strict=False)
     print("Successfully resume model from {}".format(model_path))
