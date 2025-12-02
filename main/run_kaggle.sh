@@ -30,7 +30,7 @@ mkdir -p results/outputs/models
 wget -O results/outputs/models/model_48.pth "https://drive.google.com/file/d/1fbiBLdseQU9uJSGnEzu_JZNIdrZbVYhK/view?usp=sharing"
 
 python vis_main.py --config_file "config/method.yml" TASK.NOTES=V362 TASK.NAME=visualization TASK.MODE=visualization MODEL.RESUME_EPOCH=48
-tar -czf results.tar.gz results
+tar -czf ../results.tar.gz results
 rm -rf results/outputs/*
 
 
