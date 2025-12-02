@@ -29,6 +29,7 @@ def visualization_heatmap(config, net, train_loader, DEVICE, *args, **kwargs):
                 print(time_now(), "CAM: {}/{}".format(index, len(heatmap_loader)))
             vis_imgs, inf_imgs, vis_labels, inf_labels = data
             vis_imgs = vis_imgs.to(DEVICE)
+            inf_imgs = inf_imgs.to(DEVICE)
             # heatmap_core.__call__(vis_imgs, net, net.global_classifier, vis_labels, modal="vis", *args, **kwargs)
             heatmap_core.__call__(inf_imgs, net, net.global_classifier, vis_labels, modal="inf", *args, **kwargs)
             break
