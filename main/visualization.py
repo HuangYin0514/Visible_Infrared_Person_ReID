@@ -170,7 +170,9 @@ class Heatmap_Core:
         # heatmaps = torch.max(heatmaps, dim=1, keepdim=True)[0]
         # heatmaps = heatmaps.squeeze()
 
-        heatmaps[:, :3, :3] = 0
+        mean_vals = heatmaps.mean(dim=(1, 2), keepdim=True)
+        heatmaps[:, :3, :3] = mean_vals
+
         heatmaps = heatmaps.view(bs, h * w)
         heatmaps = F.normalize(heatmaps, p=2, dim=1)
         heatmaps = heatmaps.view(bs, h, w)
