@@ -150,22 +150,22 @@ class Heatmap_Core:
         bs, c, h, w = features_map.shape
 
         # CAM
-        classifier_params = [param for name, param in classifier.named_parameters()]
-        heatmaps = torch.zeros((bs, h, w))
-        for i in range(bs):
-            heatmap_i = torch.matmul(classifier_params[-1][pids[i]].unsqueeze(0), features_map[i].unsqueeze(0).reshape(c, h * w)).detach()
-            if heatmap_i.max() != 0:
-                heatmap_i = (heatmap_i - heatmap_i.min()) / (heatmap_i.max() - heatmap_i.min())
-            heatmap_i = heatmap_i.reshape(h, w)
-            heatmaps[i] = heatmap_i
+        # classifier_params = [param for name, param in classifier.named_parameters()]
+        # heatmaps = torch.zeros((bs, h, w))
+        # for i in range(bs):
+        #     heatmap_i = torch.matmul(classifier_params[-1][pids[i]].unsqueeze(0), features_map[i].unsqueeze(0).reshape(c, h * w)).detach()
+        #     if heatmap_i.max() != 0:
+        #         heatmap_i = (heatmap_i - heatmap_i.min()) / (heatmap_i.max() - heatmap_i.min())
+        #     heatmap_i = heatmap_i.reshape(h, w)
+        #     heatmaps[i] = heatmap_i
 
         # Channel
-        # heatmaps = torch.abs(features_map)
-        # # max_channel_indices = torch.argmax(heatmaps, dim=1, keepdim=True)[0]
-        # # print(max_channel_indices, max_channel_indices.shape)
-        # # heatmaps = torch.max(heatmaps[:, 476 : 476 + 1, :, :], dim=1, keepdim=True)[0]
-        # heatmaps = torch.max(heatmaps, dim=1, keepdim=True)[0]
-        # heatmaps = heatmaps.squeeze()
+        heatmaps = torch.abs(features_map)
+        # max_channel_indices = torch.argmax(heatmaps, dim=1, keepdim=True)[0]
+        # print(max_channel_indices, max_channel_indices.shape)
+        # heatmaps = torch.max(heatmaps[:, 476 : 476 + 1, :, :], dim=1, keepdim=True)[0]
+        heatmaps = torch.max(heatmaps, dim=1, keepdim=True)[0]
+        heatmaps = heatmaps.squeeze()
 
         heatmaps = heatmaps.view(bs, h * w)
         heatmaps = F.normalize(heatmaps, p=2, dim=1)
