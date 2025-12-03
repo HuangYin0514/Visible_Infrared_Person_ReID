@@ -289,6 +289,9 @@ class Rank_Core:
                         print("qpid: {}, gpid: {}".format(qpid, gpid))
                         continue
 
+                    if matched:
+                        matched_num += 1
+
                     if data_type == "image":
                         border_color = self.GREEN if matched else self.RED
                         gimg = tensor_2_image(g_feat, self.IMAGENET_MEAN, self.IMAGENET_STD)
@@ -299,9 +302,6 @@ class Rank_Core:
                         end = (rank_idx + 1) * width + rank_idx * self.GRID_SPACING + self.QUERY_EXTRA_SPACING
                         grid_img[:, start:end, :] = gimg
                     rank_idx += 1
-
-                    if matched:
-                        matched_num += 1
 
                     if rank_idx > topk:
                         break
