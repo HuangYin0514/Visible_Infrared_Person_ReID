@@ -286,6 +286,7 @@ class Rank_Core:
                     # if matched and rank_idx == 1:  # 过滤, rank-1 错误的情况
                     #     continue
                     if not matched:
+                        print("qpid: {}, gpid: {}")
                         continue
 
                     if data_type == "image":
