@@ -26,7 +26,7 @@ mkdir -p results/outputs/models
 gdown -O results/outputs/models/model_48.pth 1fbiBLdseQU9uJSGnEzu_JZNIdrZbVYhK 
 python vis_main.py --config_file "config/method.yml" TASK.NOTES=V363 TASK.NAME=visualization TASK.MODE=visualization MODEL.RESUME_EPOCH=48
 tar -czf ../result_method.tar.gz results
-# rm -rf results/outputs/*
+rm -rf results/outputs/*
 # ***********************************************************************************************************************************************
 
 # python main.py --config_file "config/method.yml" TASK.NOTES=V363 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODULE=B
