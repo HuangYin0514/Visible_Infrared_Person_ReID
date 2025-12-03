@@ -295,7 +295,7 @@ class Rank_Core:
                         end = (rank_idx + 1) * width + rank_idx * self.GRID_SPACING + self.QUERY_EXTRA_SPACING
                         grid_img[:, start:end, :] = gimg
 
-                    if matched:
+                    if matched:  # 需要注释掉判断语句
                         rank_idx += 1
 
                     if matched:
