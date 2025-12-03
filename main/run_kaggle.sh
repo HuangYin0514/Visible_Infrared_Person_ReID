@@ -21,18 +21,18 @@ wandb login c74133df8c2cf575304acf8a99fe03ab74b6fe6a
 # python main.py --config_file "config/method.yml" TASK.NOTES=V338 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.4
 ## Visualization "Lucky" =============
 # # 无法下载Google大内容： wget -O results/outputs/models/model_48.pth "https://drive.google.com/file/d/1fbiBLdseQU9uJSGnEzu_JZNIdrZbVYhK/view?usp=sharing"
-# mkdir -p results/outputs/models
-# gdown -O results/outputs/models/model_48.pth 1fbiBLdseQU9uJSGnEzu_JZNIdrZbVYhK 
-# python vis_main.py --config_file "config/method.yml" TASK.NOTES=V363 TASK.NAME=visualization TASK.MODE=visualization MODEL.RESUME_EPOCH=48
-# tar -czf ../results.tar.gz results
-# rm -rf results/outputs/*
+mkdir -p results/outputs/models
+gdown -O results/outputs/models/model_48.pth 1fbiBLdseQU9uJSGnEzu_JZNIdrZbVYhK 
+python vis_main.py --config_file "config/method.yml" TASK.NOTES=V363 TASK.NAME=visualization TASK.MODE=visualization MODEL.RESUME_EPOCH=48
+tar -czf ../results.tar.gz results_method
+rm -rf results/outputs/*
 
 # python main.py --config_file "config/method.yml" TASK.NOTES=V363 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODULE=B
 ## Visualization "Lucky" =============
 mkdir -p results/outputs/models
 gdown -O results/outputs/models/model_48.pth 1iRFI_pq9UyXz7o3wqxJ7r2eBVLrI0_st 
 python vis_main.py --config_file "config/method.yml" TASK.MODE=visualization MODEL.RESUME_EPOCH=48 MODEL.MODULE=B
-tar -czf ../results.tar.gz results
+tar -czf ../results.tar.gz results_baseline
 rm -rf results/outputs/*
 
 ############################################################

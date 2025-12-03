@@ -14,7 +14,7 @@ from util import time_now
 
 def visualization(config, net, data_loder, train_loader, query_loader, gallery_loader, DEVICE):
     visualization_heatmap(config, net, train_loader, DEVICE)  # Grad-CAM对训练集可视化 / 可选可见光图像/红外图像
-    # visualization_rank(config, net, data_loder, query_loader, gallery_loader, DEVICE)
+    visualization_rank(config, net, data_loder, query_loader, gallery_loader, DEVICE)
     # visualization_tsne(config, base, loader)
 
 
@@ -265,13 +265,13 @@ class Rank_Core:
                 grid_img[:, :width, :] = qimg
 
             rank_idx = 1
+            matched_num = 0
             for g_idx in indices[q_idx, :]:
                 g_feat, gpid = gallery[g_idx]
                 gcamid = 1
                 invalid = (qpid == gpid) & (qcamid == gcamid)
                 if not invalid:
                     matched = gpid == qpid
-
                     # if matched and rank_idx == 1:  # 过滤, rank-1 错误的情况
                     #     continue
                     if data_type == "image":
@@ -285,12 +285,17 @@ class Rank_Core:
                         grid_img[:, start:end, :] = gimg
                     rank_idx += 1
 
+                    if matched:
+                        matched_num += 1
+
                     if rank_idx > topk:
                         break
 
             if data_type == "image":
                 # if qpid != 19:  # 查询特定的行人图像
                 #     continue
+                if matched_num < 6:
+                    continue
                 imname = str(qpid) + "_" + str(random.randint(100000, 999999))
                 cv2.imwrite(os.path.join(save_dir, imname + ".jpg"), grid_img)
 
