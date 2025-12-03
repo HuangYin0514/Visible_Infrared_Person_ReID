@@ -285,6 +285,9 @@ class Rank_Core:
                     matched = gpid == qpid
                     # if matched and rank_idx == 1:  # 过滤, rank-1 错误的情况
                     #     continue
+                    if not matched:
+                        continue
+
                     if data_type == "image":
                         border_color = self.GREEN if matched else self.RED
                         gimg = tensor_2_image(g_feat, self.IMAGENET_MEAN, self.IMAGENET_STD)
@@ -294,9 +297,7 @@ class Rank_Core:
                         start = rank_idx * width + rank_idx * self.GRID_SPACING + self.QUERY_EXTRA_SPACING
                         end = (rank_idx + 1) * width + rank_idx * self.GRID_SPACING + self.QUERY_EXTRA_SPACING
                         grid_img[:, start:end, :] = gimg
-
-                    if matched:  # 需要注释掉判断语句
-                        rank_idx += 1
+                    rank_idx += 1
 
                     if matched:
                         matched_num += 1
