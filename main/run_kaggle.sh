@@ -24,7 +24,7 @@ wandb login c74133df8c2cf575304acf8a99fe03ab74b6fe6a
 mkdir -p results/outputs/models
 gdown -O results/outputs/models/model_48.pth 1fbiBLdseQU9uJSGnEzu_JZNIdrZbVYhK 
 python vis_main.py --config_file "config/method.yml" TASK.NOTES=V363 TASK.NAME=visualization TASK.MODE=visualization MODEL.RESUME_EPOCH=48
-tar -czf ../results.tar.gz results_method
+tar -czf ../result_method.tar.gz results
 rm -rf results/outputs/*
 
 # python main.py --config_file "config/method.yml" TASK.NOTES=V363 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODULE=B
@@ -32,7 +32,7 @@ rm -rf results/outputs/*
 # mkdir -p results/outputs/models
 # gdown -O results/outputs/models/model_48.pth 1iRFI_pq9UyXz7o3wqxJ7r2eBVLrI0_st 
 # python vis_main.py --config_file "config/method.yml" TASK.MODE=visualization MODEL.RESUME_EPOCH=48 MODEL.MODULE=B
-# tar -czf ../results.tar.gz results_baseline
+# tar -czf ../results_baseline.tar.gz results
 # rm -rf results/outputs/*
 
 ############################################################
