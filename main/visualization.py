@@ -206,7 +206,7 @@ class Heatmap_Core:
             grid_img[:, 2 * width + 2 * self.GRID_SPACING :, :] = overlapped
 
             random_number = random.randint(100000, 999999)
-            cv2.imwrite(os.path.join(self.actmap_dir, str(pids[j].item()) + "_" + str(random_number) + ".jpg"), grid_img)
+            cv2.imwrite(os.path.join(self.actmap_dir, str(pids[j].item()) + "_" + modal + "_" + str(random_number) + ".jpg"), grid_img)
 
     def __call__(self, images, model, classifier, pids, *args, **kwargs):
         # model.eval()
