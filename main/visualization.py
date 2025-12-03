@@ -294,7 +294,9 @@ class Rank_Core:
                         start = rank_idx * width + rank_idx * self.GRID_SPACING + self.QUERY_EXTRA_SPACING
                         end = (rank_idx + 1) * width + rank_idx * self.GRID_SPACING + self.QUERY_EXTRA_SPACING
                         grid_img[:, start:end, :] = gimg
-                    rank_idx += 1
+
+                    if matched:
+                        rank_idx += 1
 
                     if matched:
                         matched_num += 1
