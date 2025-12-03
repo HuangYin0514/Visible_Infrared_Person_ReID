@@ -78,6 +78,17 @@ def visualization_rank(config, net, data_loder, query_loader, gallery_loader, DE
     # compute the similarity
     distmat = np.matmul(query_feat, np.transpose(gall_feat))
 
+    def cos_sim(x, y):
+        def normalize(x):
+            norm = np.tile(np.sqrt(np.sum(np.square(x), axis=1, keepdims=True)), [1, x.shape[1]])
+            return x / norm
+
+        x = normalize(x)
+        y = normalize(y)
+        return np.matmul(x, y.transpose([1, 0]))
+
+    distmat = cos_sim(query_feat, gall_feat)
+
     cmc, mAP = None, None
     if config.DATASET.TRAIN_DATASET == "sysu_mm01":
         cmc, mAP, mINP = eval_sysu(
