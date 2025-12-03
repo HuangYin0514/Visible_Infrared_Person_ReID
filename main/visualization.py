@@ -13,7 +13,7 @@ from util import time_now
 
 
 def visualization(config, net, data_loder, train_loader, query_loader, gallery_loader, DEVICE):
-    visualization_heatmap(config, net, train_loader, DEVICE)  # Grad-CAM对训练集可视化 / 可选可见光图像/红外图像
+    # visualization_heatmap(config, net, train_loader, DEVICE)  # Grad-CAM对训练集可视化 / 可选可见光图像/红外图像
     visualization_rank(config, net, data_loder, query_loader, gallery_loader, DEVICE)
     # visualization_tsne(config, base, loader)
 
@@ -294,7 +294,7 @@ class Rank_Core:
             if data_type == "image":
                 # if qpid != 19:  # 查询特定的行人图像
                 #     continue
-                if matched_num < 6:
+                if matched_num < 3:
                     continue
                 imname = str(qpid) + "_" + str(random.randint(100000, 999999))
                 cv2.imwrite(os.path.join(save_dir, imname + ".jpg"), grid_img)
