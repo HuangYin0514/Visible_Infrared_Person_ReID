@@ -10,28 +10,30 @@ wandb login c74133df8c2cf575304acf8a99fe03ab74b6fe6a
 # Sysu_mm01
 ############################################################
 
-
-
-# python main.py --config_file "config/method.yml" TASK.NOTES=V338 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.4
-
 # python main.py --config_file "config/method.yml" TASK.NOTES=V348 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.4  DATASET.MODE=indoor
 
 # python main.py --config_file "config/method.yml" TASK.NOTES=V353 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.4 MODEL.MODULE=B_IP
 
 # python main.py --config_file "config/method.yml" TASK.NOTES=V354 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.4 MODEL.MODULE=B_IC_IP
 
-python main.py --config_file "config/method.yml" TASK.NOTES=V363 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODULE=B
-
 # python main.py --config_file "config/method.yml" TASK.NOTES=V362 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.4 
 
-# Visualization "Lucky"
+# python main.py --config_file "config/method.yml" TASK.NOTES=V338 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.4
+## Visualization "Lucky" =============
+# # 无法下载Google大内容： wget -O results/outputs/models/model_48.pth "https://drive.google.com/file/d/1fbiBLdseQU9uJSGnEzu_JZNIdrZbVYhK/view?usp=sharing"
 # mkdir -p results/outputs/models
-# # wget -O results/outputs/models/model_48.pth "https://drive.google.com/file/d/1fbiBLdseQU9uJSGnEzu_JZNIdrZbVYhK/view?usp=sharing"
 # gdown -O results/outputs/models/model_48.pth 1fbiBLdseQU9uJSGnEzu_JZNIdrZbVYhK 
 # python vis_main.py --config_file "config/method.yml" TASK.NOTES=V363 TASK.NAME=visualization TASK.MODE=visualization MODEL.RESUME_EPOCH=48
 # tar -czf ../results.tar.gz results
 # rm -rf results/outputs/*
 
+# python main.py --config_file "config/method.yml" TASK.NOTES=V363 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODULE=B
+## Visualization "Lucky" =============
+mkdir -p results/outputs/models
+gdown -O results/outputs/models/model_48.pth 1iRFI_pq9UyXz7o3wqxJ7r2eBVLrI0_st 
+python vis_main.py --config_file "config/method.yml" TASK.MODE=visualization MODEL.RESUME_EPOCH=48 MODEL.MODULE=B
+tar -czf ../results.tar.gz results
+rm -rf results/outputs/*
 
 ############################################################
 # Reg_db
