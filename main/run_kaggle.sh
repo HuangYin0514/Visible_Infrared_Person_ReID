@@ -29,7 +29,7 @@ wandb login c74133df8c2cf575304acf8a99fe03ab74b6fe6a
 # rm -rf results/outputs/*
 # ***********************************************************************************************************************************************
 
-python main.py --config_file "config/method.yml" TASK.NOTES=v365 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODULE=B
+python main.py --config_file "config/method.yml" TASK.NOTES=v366 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODULE=B
 ## Visualization "Lucky" 
 # ***********************************************************************************************************************************************
 # mkdir -p results/outputs/models
