@@ -18,29 +18,27 @@ wandb login c74133df8c2cf575304acf8a99fe03ab74b6fe6a
 
 # python main.py --config_file "config/method.yml" TASK.NOTES=V362 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.4 
 
-# B_I_C_P / sysu-mm01 / all-search 
+# B_I_C_P / sysu-mm01 / all-search  ===================================================================================================================
 # python main.py --config_file "config/method.yml" TASK.NOTES=v364 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.4
 # # 无法下载Google大内容： wget -O results/outputs/models/model_48.pth "https://drive.google.com/file/d/1fbiBLdseQU9uJSGnEzu_JZNIdrZbVYhK/view?usp=sharing"
-# Visualization *********************************************************************************************************************************
+# Visualization ***************
 # mkdir -p results/outputs/models
 # gdown -O results/outputs/models/model_48.pth 1fbiBLdseQU9uJSGnEzu_JZNIdrZbVYhK 
 # python vis_main.py --config_file "config/method.yml" TASK.NOTES=V363 TASK.NAME=visualization TASK.MODE=visualization MODEL.RESUME_EPOCH=48
 # tar -czf ../result_method.tar.gz results
 # rm -rf results/outputs/*
-# ***********************************************************************************************************************************************
 
-# B_I_C_P / sysu-mm01 / indoor
-python main.py --config_file "config/method.yml" TASK.NOTES=v367 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.4 DATASET.MODE=indoor
+# B_I_C_P / sysu-mm01 / indoor ===================================================================================================================
+# python main.py --config_file "config/method.yml" TASK.NOTES=v367 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.4 DATASET.MODE=indoor
 
-# Baseline
+# Baseline ===================================================================================================================
 # python main.py --config_file "config/method.yml" TASK.NOTES=v366 TASK.NAME=B_I_C_P OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODULE=B
-# Visualization *********************************************************************************************************************************
+# Visualization ***************
 # mkdir -p results/outputs/models
 # gdown -O results/outputs/models/model_48.pth 1iRFI_pq9UyXz7o3wqxJ7r2eBVLrI0_st 
 # python vis_main.py --config_file "config/method.yml" TASK.MODE=visualization MODEL.RESUME_EPOCH=48 MODEL.MODULE=B
 # tar -czf ../results_baseline.tar.gz results
 # rm -rf results/outputs/*
-# ***********************************************************************************************************************************************
 
 ############################################################
 # Reg_db
@@ -91,23 +89,14 @@ python main.py --config_file "config/method.yml" TASK.NOTES=v367 TASK.NAME=B_I_C
 
 
 
-# ***************** V351 / MODEL.MODAL_PROPAGATION_WEIGHT=0.32 / TEST.REG_DB_MODE=T2V *****************
-# python main.py --config_file "config/method.yml" TASK.NOTES=V351 TASK.NAME=B_I_C_P_regdb_1 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=1 MODEL.NON_LOCAL_FLAG=False MODEL.MODAL_CALIBRATION_WEIGHT=1 MODEL.MODAL_PROPAGATION_WEIGHT=0.32 TEST.REG_DB_MODE=T2V
-
-# python main.py --config_file "config/method.yml" TASK.NOTES=V351 TASK.NAME=B_I_C_P_regdb_2 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=2 MODEL.NON_LOCAL_FLAG=False MODEL.MODAL_CALIBRATION_WEIGHT=1 MODEL.MODAL_PROPAGATION_WEIGHT=0.32 TEST.REG_DB_MODE=T2V
-
-# python main.py --config_file "config/method.yml" TASK.NOTES=V351 TASK.NAME=B_I_C_P_regdb_3 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=3 MODEL.NON_LOCAL_FLAG=False MODEL.MODAL_CALIBRATION_WEIGHT=1 MODEL.MODAL_PROPAGATION_WEIGHT=0.32 TEST.REG_DB_MODE=T2V
-
-# python main.py --config_file "config/method.yml" TASK.NOTES=V351 TASK.NAME=B_I_C_P_regdb_4 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=4 MODEL.NON_LOCAL_FLAG=False MODEL.MODAL_CALIBRATION_WEIGHT=1 MODEL.MODAL_PROPAGATION_WEIGHT=0.32 TEST.REG_DB_MODE=T2V
-
-# python main.py --config_file "config/method.yml" TASK.NOTES=V351 TASK.NAME=B_I_C_P_regdb_5 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=5 MODEL.NON_LOCAL_FLAG=False MODEL.MODAL_CALIBRATION_WEIGHT=1 MODEL.MODAL_PROPAGATION_WEIGHT=0.32 TEST.REG_DB_MODE=T2V
-
-# python main.py --config_file "config/method.yml" TASK.NOTES=V351 TASK.NAME=B_I_C_P_regdb_6 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=6 MODEL.NON_LOCAL_FLAG=False MODEL.MODAL_CALIBRATION_WEIGHT=1 MODEL.MODAL_PROPAGATION_WEIGHT=0.32 TEST.REG_DB_MODE=T2V
-
-# python main.py --config_file "config/method.yml" TASK.NOTES=V351 TASK.NAME=B_I_C_P_regdb_7 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=7 MODEL.NON_LOCAL_FLAG=False MODEL.MODAL_CALIBRATION_WEIGHT=1 MODEL.MODAL_PROPAGATION_WEIGHT=0.32 TEST.REG_DB_MODE=T2V
-
-# python main.py --config_file "config/method.yml" TASK.NOTES=V351 TASK.NAME=B_I_C_P_regdb_8 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=8 MODEL.NON_LOCAL_FLAG=False MODEL.MODAL_CALIBRATION_WEIGHT=1 MODEL.MODAL_PROPAGATION_WEIGHT=0.32 TEST.REG_DB_MODE=T2V
-
-# python main.py --config_file "config/method.yml" TASK.NOTES=V351 TASK.NAME=B_I_C_P_regdb_9 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=9 MODEL.NON_LOCAL_FLAG=False MODEL.MODAL_CALIBRATION_WEIGHT=1 MODEL.MODAL_PROPAGATION_WEIGHT=0.32 TEST.REG_DB_MODE=T2V
-
-# python main.py --config_file "config/method.yml" TASK.NOTES=V351 TASK.NAME=B_I_C_P_regdb_10 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=10 MODEL.NON_LOCAL_FLAG=False MODEL.MODAL_CALIBRATION_WEIGHT=1 MODEL.MODAL_PROPAGATION_WEIGHT=0.32 TEST.REG_DB_MODE=T2V
+# B_I_C_P / MODEL.MODAL_PROPAGATION_WEIGHT=0.32 / TEST.REG_DB_MODE=T2V / V368  ===================================================================================================================
+python main.py --config_file "config/method.yml" TASK.NOTES=V368 TASK.NAME=B_I_C_P_regdb_1 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=1 MODEL.NON_LOCAL_FLAG=False MODEL.MODAL_CALIBRATION_WEIGHT=1 MODEL.MODAL_PROPAGATION_WEIGHT=0.32 TEST.REG_DB_MODE=T2V
+python main.py --config_file "config/method.yml" TASK.NOTES=V368 TASK.NAME=B_I_C_P_regdb_2 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=2 MODEL.NON_LOCAL_FLAG=False MODEL.MODAL_CALIBRATION_WEIGHT=1 MODEL.MODAL_PROPAGATION_WEIGHT=0.32 TEST.REG_DB_MODE=T2V
+python main.py --config_file "config/method.yml" TASK.NOTES=V368 TASK.NAME=B_I_C_P_regdb_3 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=3 MODEL.NON_LOCAL_FLAG=False MODEL.MODAL_CALIBRATION_WEIGHT=1 MODEL.MODAL_PROPAGATION_WEIGHT=0.32 TEST.REG_DB_MODE=T2V
+python main.py --config_file "config/method.yml" TASK.NOTES=V368 TASK.NAME=B_I_C_P_regdb_4 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=4 MODEL.NON_LOCAL_FLAG=False MODEL.MODAL_CALIBRATION_WEIGHT=1 MODEL.MODAL_PROPAGATION_WEIGHT=0.32 TEST.REG_DB_MODE=T2V
+python main.py --config_file "config/method.yml" TASK.NOTES=V368 TASK.NAME=B_I_C_P_regdb_5 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=5 MODEL.NON_LOCAL_FLAG=False MODEL.MODAL_CALIBRATION_WEIGHT=1 MODEL.MODAL_PROPAGATION_WEIGHT=0.32 TEST.REG_DB_MODE=T2V
+python main.py --config_file "config/method.yml" TASK.NOTES=V368 TASK.NAME=B_I_C_P_regdb_6 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=6 MODEL.NON_LOCAL_FLAG=False MODEL.MODAL_CALIBRATION_WEIGHT=1 MODEL.MODAL_PROPAGATION_WEIGHT=0.32 TEST.REG_DB_MODE=T2V
+python main.py --config_file "config/method.yml" TASK.NOTES=V368 TASK.NAME=B_I_C_P_regdb_7 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=7 MODEL.NON_LOCAL_FLAG=False MODEL.MODAL_CALIBRATION_WEIGHT=1 MODEL.MODAL_PROPAGATION_WEIGHT=0.32 TEST.REG_DB_MODE=T2V
+python main.py --config_file "config/method.yml" TASK.NOTES=V368 TASK.NAME=B_I_C_P_regdb_8 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=8 MODEL.NON_LOCAL_FLAG=False MODEL.MODAL_CALIBRATION_WEIGHT=1 MODEL.MODAL_PROPAGATION_WEIGHT=0.32 TEST.REG_DB_MODE=T2V
+python main.py --config_file "config/method.yml" TASK.NOTES=V368 TASK.NAME=B_I_C_P_regdb_9 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=9 MODEL.NON_LOCAL_FLAG=False MODEL.MODAL_CALIBRATION_WEIGHT=1 MODEL.MODAL_PROPAGATION_WEIGHT=0.32 TEST.REG_DB_MODE=T2V
+python main.py --config_file "config/method.yml" TASK.NOTES=V368 TASK.NAME=B_I_C_P_regdb_10 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/reg-db/RegDB/ DATASET.TRIAL=10 MODEL.NON_LOCAL_FLAG=False MODEL.MODAL_CALIBRATION_WEIGHT=1 MODEL.MODAL_PROPAGATION_WEIGHT=0.32 TEST.REG_DB_MODE=T2V
