@@ -32,10 +32,10 @@ wandb login c74133df8c2cf575304acf8a99fe03ab74b6fe6a
 # rm -rf results/outputs/*
 
 # B_IP / sysu-mm01 / all-search  ===================================================================================================================
-python main.py --config_file "config/method.yml" TASK.NOTES=V371 TASK.NAME=B_IP OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.4 MODEL.MODULE=B_IP
+# python main.py --config_file "config/method.yml" TASK.NOTES=V371 TASK.NAME=B_IP OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.4 MODEL.MODULE=B_IP
 
 # B_I_IP / sysu-mm01 / all-search  ===================================================================================================================
-# python main.py --config_file "config/method.yml" TASK.NOTES=V354 TASK.NAME=B_IC_IP OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.4 MODEL.MODULE=B_IC_IP
+python main.py --config_file "config/method.yml" TASK.NOTES=V372 TASK.NAME=B_IC_IP OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.4 MODEL.MODULE=B_IC_IP
 
 ############################################################
 # Reg_db
