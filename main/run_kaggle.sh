@@ -38,7 +38,7 @@ wandb login c74133df8c2cf575304acf8a99fe03ab74b6fe6a
 # python main.py --config_file "config/method.yml" TASK.NOTES=V372 TASK.NAME=B_IC_IP OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.4 MODEL.MODULE=B_IC_IP
 
 # B_I_IP / sysu-mm01 / all-search / Parameter Analysis ===================================================================================================================
-python main.py --config_file "config/method.yml" TASK.NOTES=V373 TASK.NAME=B_IC_IP OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.1 MODEL.MODULE=B_IC_IP
+python main.py --config_file "config/method.yml" TASK.NOTES=v374 TASK.NAME=B_I_C_P_mpw01 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.1
 
 ############################################################
 # Reg_db
