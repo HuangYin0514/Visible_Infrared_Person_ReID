@@ -39,7 +39,8 @@ wandb login c74133df8c2cf575304acf8a99fe03ab74b6fe6a
 
 # B_I_C_P / sysu-mm01 / all-search / Parameter Analysis ===================================================================================================================
 # python main.py --config_file "config/method.yml" TASK.NOTES=v374 TASK.NAME=B_I_C_P_mpw01 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.1
-python main.py --config_file "config/method.yml" TASK.NOTES=v375 TASK.NAME=B_I_C_P_mpw02 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.2
+# python main.py --config_file "config/method.yml" TASK.NOTES=v375 TASK.NAME=B_I_C_P_mpw02 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.2
+python main.py --config_file "config/method.yml" TASK.NOTES=v376 TASK.NAME=B_I_C_P_mpw03 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.3
 
 ############################################################
 # Reg_db
