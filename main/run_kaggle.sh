@@ -46,7 +46,8 @@ wandb login c74133df8c2cf575304acf8a99fe03ab74b6fe6a
 # python main.py --config_file "config/method.yml" TASK.NOTES=v379 TASK.NAME=B_I_C_P_mpw07 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.7
 # python main.py --config_file "config/method.yml" TASK.NOTES=v380 TASK.NAME=B_I_C_P_mpw08 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.8
 # python main.py --config_file "config/method.yml" TASK.NOTES=v381 TASK.NAME=B_I_C_P_mpw09 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=0.9
-python main.py --config_file "config/method.yml" TASK.NOTES=v382 TASK.NAME=B_I_C_P_mpw10 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=1.0
+# python main.py --config_file "config/method.yml" TASK.NOTES=v382 TASK.NAME=B_I_C_P_mpw10 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=1.0
+python main.py --config_file "config/method.yml" TASK.NOTES=v383 TASK.NAME=B_I_C_P_mpw11 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 MODEL.MODAL_PROPAGATION_WEIGHT=1.1
 
 ############################################################
 # Reg_db
