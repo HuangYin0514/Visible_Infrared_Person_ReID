@@ -16,8 +16,8 @@ OUTPUT_DIR = "./analysis/results/ablation"
 def plot_parameter_lossWeight():
     # 设置数据 --------------------------------------------------------
     x_values = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-    map_values = [68.37, 68.98, 68.28, 68.75, 69.81, 67.96, 68.60, 68.58, 69.23, 69.28, 69.40]
-    rank1_values = [69.68, 70.66, 69.63, 70.76, 72.10, 69.92, 69.84, 70.66, 70.92, 71.47, 71.21]
+    map_values = [64.339, 69.467, 69.78, 69.707, 71.221, 69.585, 70.863, 70.301, 70.968, 70.025, 70.946]
+    rank1_values = [67.499, 74.441, 74.915, 74.389, 77.044, 73.836, 76.15, 75.335, 75.914, 74.888, 76.203]
 
     # 创建画布 --------------------------------------------------------
     LINE_NUM = 1
@@ -34,13 +34,13 @@ def plot_parameter_lossWeight():
 
     # 绘制左侧轴
     # axis_1.set_ylim(min_values + offset, max_values + offset)
-    axis_1.set_ylim(63, 78)
+    axis_1.set_ylim(63, 89)
     axis_1.set_ylabel("mAP (%)")
     axis_1.yaxis.set_major_locator(MultipleLocator(3))  # 设置主刻度间隔为 5
 
     # 绘制右侧轴
     # axis_2.set_ylim(min_values - offset, max_values - offset)
-    axis_2.set_ylim(60, 75)
+    axis_2.set_ylim(60, 86)
     axis_2.set_ylabel("Rank-1 (%)")
     axis_2.yaxis.set_major_locator(MultipleLocator(3))  # 设置主刻度间隔为 5
 
