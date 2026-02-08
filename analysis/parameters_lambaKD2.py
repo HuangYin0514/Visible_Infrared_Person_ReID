@@ -41,7 +41,8 @@ def plot_parameter_lossWeight():
     # axis_1.set_xlabel(r"Parameter $\lambda$")
 
     # 绘制图像
-    axis_1.plot(x_values, rank1_values, label="Rank-1", color="#71D4EB", marker="o", markersize=MARKERSIZE, zorder=2)
+    # axis_1.plot(x_values, rank1_values, label="Rank-1", color="#71D4EB", marker="o", markersize=MARKERSIZE, zorder=2)
+    axis_1.plot(x_values, rank1_values, label="Rank-1", marker="o", markersize=MARKERSIZE, zorder=2)
 
     # 图像调整
     # axis_1.grid(axis="x")
