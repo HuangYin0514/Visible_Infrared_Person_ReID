@@ -309,8 +309,8 @@ class Rank_Core:
             if data_type == "image":
                 # if qpid != 19:  # 查询特定的行人图像
                 #     continue
-                # if matched_num < 3:
-                #     continue
+                if matched_num < 3:  # 过滤匹配数量小于3的情况
+                    continue
                 imname = str(qpid) + "_" + str(random.randint(100000, 999999))
                 cv2.imwrite(os.path.join(save_dir, imname + ".jpg"), grid_img)
 
