@@ -110,7 +110,7 @@ wandb login c74133df8c2cf575304acf8a99fe03ab74b6fe6a
 # rm -rf results/outputs/*
 
 # Visualization / B / Reg_db/ V2T ***************
-python main.py --config_file "config/method.yml" TASK.NOTES=v397 TASK.NAME=B_I_C_P_regdb_1 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/datasets/huangyink2/reg-db/RegDB/ DATASET.TRIAL=1 MODEL.NON_LOCAL_FLAG=True MODEL.MODAL_CALIBRATION_WEIGHT=0 MODEL.MODAL_PROPAGATION_WEIGHT=0 MODEL.MODULE=B
-python vis_main.py --config_file "config/method.yml" TASK.NOTES=v398 TASK.NAME=visualization TASK.MODE=visualization MODEL.RESUME_EPOCH=34 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/datasets/huangyink2/reg-db/RegDB/ DATASET.TRIAL=1 MODEL.NON_LOCAL_FLAG=True MODEL.MODAL_CALIBRATION_WEIGHT=0 MODEL.MODAL_PROPAGATION_WEIGHT=0 MODEL.MODULE=B
-tar -czf ../result_method_V2T.tar.gz results
+python main.py --config_file "config/method.yml" TASK.NOTES=v400 TASK.NAME=B_I_C_P_regdb_1 OPTIMIZER.TOTAL_TRAIN_EPOCH=61 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/datasets/huangyink2/reg-db/RegDB/ DATASET.TRIAL=1 MODEL.NON_LOCAL_FLAG=True MODEL.MODAL_CALIBRATION_WEIGHT=0 MODEL.MODAL_PROPAGATION_WEIGHT=0 MODEL.MODULE=B
+python vis_main.py --config_file "config/method.yml" TASK.NOTES=v400 TASK.NAME=visualization TASK.MODE=visualization MODEL.RESUME_EPOCH=34 DATASET.TRAIN_DATASET=reg_db DATASET.TRAIN_DATASET_PATH=/kaggle/input/datasets/huangyink2/reg-db/RegDB/ DATASET.TRIAL=1 MODEL.NON_LOCAL_FLAG=True MODEL.MODAL_CALIBRATION_WEIGHT=0 MODEL.MODAL_PROPAGATION_WEIGHT=0 MODEL.MODULE=B
+tar -czf ../result_baseline_V2T.tar.gz results
 rm -rf results/outputs/*
