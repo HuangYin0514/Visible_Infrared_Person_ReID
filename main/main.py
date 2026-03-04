@@ -7,6 +7,7 @@ import torch
 import torch.nn.functional as F
 import torch.utils.data as data
 import util
+import wandb
 from criterion import Criterion
 from data import Data_Loder, IdentitySampler
 from eval_metrics import eval_regdb, eval_sysu
@@ -14,8 +15,6 @@ from model import ReIDNet
 from optimizer import Optimizer
 from scheduler import Scheduler
 from tqdm import tqdm
-
-import wandb
 
 warnings.filterwarnings("ignore")
 
@@ -454,7 +453,7 @@ def run(config):
                 best_rank1 = cmc[0]
                 best_mAP = mAP
                 wandb.log({"best_epoch": best_epoch, "best_rank1": best_rank1, "best_mAP": best_mAP})
-                if epoch > 40:
+                if epoch > 20:
                     util.save_model(
                         model=net,
                         epoch=epoch,
