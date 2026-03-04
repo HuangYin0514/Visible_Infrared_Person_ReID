@@ -44,7 +44,11 @@ def visualization_rank(config, net, data_loder, query_loader, gallery_loader, DE
     if config.DATASET.TRAIN_DATASET == "sysu_mm01":
         query_feat = np.zeros((data_loder.N_query, 2048))
         gall_feat = np.zeros((data_loder.N_gallery, 2048))
+    if config.DATASET.TRAIN_DATASET == "reg_db":
+        query_feat = np.zeros((data_loder.N_query, 6 * 512))
+        gall_feat = np.zeros((data_loder.N_gallery, 6 * 512))
     loaders = [data_loder.query_loader, data_loder.gallery_loader]
+
     print(util.time_now(), "Start extracting features...")
     with torch.no_grad():
         for loader_id, loader in enumerate(loaders):
