@@ -311,8 +311,8 @@ class Rank_Core:
                 #     continue
 
                 imname = str(qpid) + "_" + str(random.randint(100000, 999999))
-                if matched_num < 3:  # 过滤匹配数量小于3的情况
-                    continue
+                # if matched_num < 3:  # 过滤匹配数量小于3的情况
+                #     continue
                 cv2.imwrite(os.path.join(save_dir, imname + ".jpg"), grid_img)
 
             if (q_idx + 1) % 100 == 0:
